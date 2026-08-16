@@ -377,11 +377,19 @@ final class MarkdownPanel: Panel, ObservableObject, FilePreviewTextEditingPanel 
         replacingDirtyContent: Bool
     ) {
         if !replacingDirtyContent && isDirty {
+            let previousDiskContent = originalTextContent
             originalTextContent = newContent
             textEncoding = encoding
             isDirty = textContent != newContent
             isFileUnavailable = false
             GlobalSearchCoordinator.shared.captureMarkdownPanel(self)
+            saveConflictCoordinator.noteDiskContentWhileDirty(
+                filePath: filePath,
+                diskContent: newContent,
+                previousDiskContent: previousDiskContent,
+                bufferContent: textContent
+            )
+            saveConflict = saveConflictCoordinator.pending
             return
         }
 

@@ -53,6 +53,15 @@ struct MarkdownPanelView: View {
 
             Divider()
 
+            // Same reasoning as FilePreviewPanelView: the unavailable branch is below this
+            // point, so the banner has to opt out of it explicitly.
+            if !panel.isFileUnavailable, let conflict = panel.saveConflict {
+                FilePreviewSaveConflictBanner(conflict: conflict) { resolution in
+                    panel.resolveSaveConflict(resolution)
+                }
+                Divider()
+            }
+
             if panel.isFileUnavailable {
                 fileUnavailableView
             } else {

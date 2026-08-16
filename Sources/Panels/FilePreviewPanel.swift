@@ -1306,7 +1306,13 @@ final class FilePreviewPanel: Panel, ObservableObject, FilePreviewTextEditingPan
                 // The existing conditions, assignments, and early return above are untouched;
                 // this only surfaces a choice the code was previously making silently
                 // (keeping the buffer without telling anyone).
-                _ = previousDiskContent
+                saveConflictCoordinator.noteDiskContentWhileDirty(
+                    filePath: filePath,
+                    diskContent: content,
+                    previousDiskContent: previousDiskContent,
+                    bufferContent: textContent
+                )
+                saveConflict = saveConflictCoordinator.pending
                 return
             }
             textContent = content
@@ -1413,6 +1419,16 @@ struct FilePreviewPanelView: View {
         VStack(spacing: 0) {
             if panel.previewMode != .pdf || panel.isFileUnavailable {
                 header
+                Divider()
+            }
+            // `!panel.isFileUnavailable` is required, not defensive: the unavailable branch
+            // lives *inside* `content(previewRevision:)`, while this banner is its sibling.
+            // Without the guard, deleting the file would leave a banner offering to reload
+            // something that no longer exists.
+            if !panel.isFileUnavailable, let conflict = panel.saveConflict {
+                FilePreviewSaveConflictBanner(conflict: conflict) { resolution in
+                    panel.resolveSaveConflict(resolution)
+                }
                 Divider()
             }
             content(previewRevision: panel.previewRevisionState.value)
