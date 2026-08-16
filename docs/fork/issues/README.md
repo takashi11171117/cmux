@@ -15,7 +15,7 @@
 | # | Issue | 種別 | 依存 | 由来 FR / NFR |
 |---|-------|------|------|---------------|
 | AFIDE-01 | [シンタックスハイライトエンジン選定（未確定-02 の解決）](./afide-01_syntax-highlight-engine-selection.md)（**調査完了** → [結果](./afide-01_調査結果.md)） | 調査 | なし | NFR-11, FR-01/02/03/11 |
-| AFIDE-02 | [upstream 追従とビルド・テスト基準線の確立](./afide-02_upstream-sync-baseline.md) | 準備 | なし | NFR-10, NFR-08, NFR-09 |
+| AFIDE-02 | [upstream 追従とビルド・テスト基準線の確立](./afide-02_upstream-sync-baseline.md)（**基準線は完了 / 追従は保留** → [記録](./afide-02_基準線記録.md)） | 準備 | なし | NFR-10, NFR-08, NFR-09 |
 | AFIDE-03 | [Session Restore 回帰フィクスチャとテスト](./afide-03_session-restore-regression-fixture.md) | テスト | 02 | NFR-01, NFR-02 |
 | AFIDE-04 | [設定キー `fileEditor.syntaxHighlight` / `.lineNumbers` の追加](./afide-04_file-editor-settings-keys.md) | 実装 | 02（03 完了後が望ましい） | FR-04, FR-06, D-02 |
 | AFIDE-05 | [ハイライト基盤の値型と言語判定ポリシー](./afide-05_highlight-value-types-and-policy.md) | 実装 | 02 | FR-02, FR-03, FR-11, NFR-05 |
@@ -73,9 +73,9 @@ Phase 3（独立。Phase 0 完了後いつでも並行可）
 | 未確定 | 内容 | ブロックする issue | 解決手段 |
 |---|---|---|---|
 | ~~**未確定-02**~~ **解決済み** | ハイライトエンジンの選定 → **同梱 highlight.js + JavaScriptCore（選択肢 C）を採用**。根拠は [AFIDE-01 調査結果](./afide-01_調査結果.md) | AFIDE-06 | AFIDE-01 で解決済み |
-| **未確定-05** | `fileEditor.syntaxHighlight` / `.lineNumbers` の**既定値** | AFIDE-04 | 本人判断。FR-04 AC3 が「既定値が決まるまで実装しない」と定めているため、未決のまま AFIDE-04 に着手しない |
+| ~~**未確定-05**~~ **解決済み** | `fileEditor.syntaxHighlight` / `.lineNumbers` の既定値 → **両方 `true`**（2026-08-17 決定）。FR-04 AC3 の実装ブロックは解除。閾値（`maximumHighlightBytes`）は定数のまま AFIDE-07 で決める | AFIDE-04 | 決定済み |
 | **未確定-03** | Compare の実体、および**「Reload / Keep Mine の2択で先行リリースしてよいか」** | AFIDE-12 の**マージ可否**（実装着手はブロックしない） | AFIDE-13（調査 issue）で解決する |
-| **未確定-11** | upstream 追従をいつ実施するか（upstream リモートを追加してよいか） | AFIDE-02 | 本人判断。AFIDE-02 の中で解決する |
+| ~~**未確定-11**~~ **解決済み** | upstream 追従の実施時期 → **upstream #10225 のクローズまで延期**（2026-08-17 決定）。`upstream/main` は `04ff18eea6` により macOS がビルド不能で、取り込むと NFR-10 の受け入れ条件2 を満たせない。リモート追加は完了済み。根拠は [AFIDE-02 基準線記録](./afide-02_基準線記録.md) | AFIDE-02 | AFIDE-02 で解決済み |
 
 > **AFIDE-01 の調査で新規-H 〜 新規-N の7件が追加で判明した**。一覧と扱いは [AFIDE-01 調査結果 §6](./afide-01_調査結果.md#6-この調査で新たに判明した未確定事項) を見ること。うち **新規-H（スクロール毎にエンジンを呼ぶと全文を再走査する。AFIDE-07 の設計に影響）は本人判断が要る**。
 
@@ -117,5 +117,7 @@ Phase 3（独立。Phase 0 完了後いつでも並行可）
 - **ユーザー向け文字列**: `String(localized:)` + `Resources/Localizable.xcstrings`（en / ja）+ `web/messages/{en,ja}.json`。対象は AFIDE-04（Settings 6キー + web スキーマ）と AFIDE-12（バナー 4〜5キー）
 - **設定キー追加は13箇所**: 1本足すのに13箇所の登録が要る（詳細設計 §12.2）。全リストは AFIDE-04 のタスクリストに展開済み
 - **ビルド確認**: `./scripts/reload.sh --tag agent-first-ide`（**素の `xcodebuild` / untagged ビルドは禁止**）と `scripts/test-unit.sh`
+- **テスト結果の読み方**: `cmuxTests/` は **Swift Testing と XCTest が混在**しており出力形式が2系統に分かれる。XCTest は `Test Suite '...' passed` / `Executed N tests`、Swift Testing は `◇ Test run started.` / `✔ Test run with N tests in M suites passed`。**`Test Suite` だけを見ると Swift Testing 側が丸ごと見えず件数を誤読する**（AFIDE-02 で実際に踏んだ。詳細は [基準線記録 §3.4](./afide-02_基準線記録.md)）
+- **フルスイートはローカルで回さない**: `scripts/test-unit.sh` を絞り込みなしで実行すると `AppDelegateShortcutRoutingTests` でハングする。回帰判定は NFR-06 の5ファイル（55件）を `-only-testing` で回し、フルスイートの緑判定は `scripts/verify-remote.sh mac --tag agent-first-ide` かCI に委ねる
 - **Shared behavior policy**: 複数入口から使える振る舞いは単一の共有アクション経路にする。AFIDE-11（分岐を増やさない）/ AFIDE-10（フォント同期点を `applyCurrentPreviewFont()` に集約）/ AFIDE-12（解決を coordinator の1メソッドに閉じる）/ AFIDE-14（行番号は `PreferredEditorService` 1箇所にだけ口を開ける）
 - **触らないファイル**: `Sources/Workspace.swift` / `Sources/TerminalPanel*.swift` / `Sources/ContentView.swift` / `Sources/GhosttyTerminalView.swift` / `Sources/TerminalWindowPortal.swift` / `Sources/SessionPersistence.swift` / `Sources/CommandClickFileOpenRouter.swift` / `Sources/FileExplorerKeyboardShortcuts.swift`
