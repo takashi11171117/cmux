@@ -139,6 +139,88 @@ struct FilePreviewReloadTests {
         #expect(panel.isDirty)
     }
 
+    @Test("An external change while dirty raises a save conflict")
+    func externalChangeWhileDirtyRaisesConflict() async throws {
+        // Before this, the panel silently kept the buffer and told the user nothing. The
+        // buffer is still kept — `manualRefreshPreservesDirtyText` above pins that — but the
+        // choice is now surfaced instead of being made for them.
+        let fileURL = FileManager.default.temporaryDirectory
+            .appending(path: "cmux-file-preview-conflict-\(UUID().uuidString).txt")
+        defer { try? FileManager.default.removeItem(at: fileURL) }
+        try "on disk\n".write(to: fileURL, atomically: true, encoding: .utf8)
+
+        let panel = FilePreviewPanel(
+            workspaceId: UUID(),
+            filePath: fileURL.path,
+            startFileWatcher: false
+        )
+        defer { panel.close() }
+        await panel.loadTextContent().value
+        panel.updateTextContent("unsaved edits\n")
+        #expect(panel.saveConflict == nil, "a clean load must not raise a conflict")
+
+        try "changed on disk\n".write(to: fileURL, atomically: true, encoding: .utf8)
+        await panel.reloadFromDisk().value
+
+        let conflict = try #require(panel.saveConflict, "external change while dirty should raise a conflict")
+        #expect(conflict.diskContent == "changed on disk\n")
+        #expect(conflict.filePath == fileURL.path)
+        #expect(panel.textContent == "unsaved edits\n", "the buffer must survive untouched")
+        #expect(panel.isDirty)
+    }
+
+    @Test("Reloading from the conflict banner takes the disk version")
+    func resolvingWithReloadTakesDiskVersion() async throws {
+        let fileURL = FileManager.default.temporaryDirectory
+            .appending(path: "cmux-file-preview-conflict-reload-\(UUID().uuidString).txt")
+        defer { try? FileManager.default.removeItem(at: fileURL) }
+        try "on disk\n".write(to: fileURL, atomically: true, encoding: .utf8)
+
+        let panel = FilePreviewPanel(
+            workspaceId: UUID(),
+            filePath: fileURL.path,
+            startFileWatcher: false
+        )
+        defer { panel.close() }
+        await panel.loadTextContent().value
+        panel.updateTextContent("unsaved edits\n")
+        try "changed on disk\n".write(to: fileURL, atomically: true, encoding: .utf8)
+        await panel.reloadFromDisk().value
+        #expect(panel.saveConflict != nil)
+
+        panel.resolveSaveConflict(.reload)
+        await panel.loadTextContent(replacingDirtyContent: true).value
+
+        #expect(panel.textContent == "changed on disk\n")
+        #expect(panel.isDirty == false)
+        #expect(panel.saveConflict == nil)
+    }
+
+    @Test("Keeping mine dismisses the banner without touching the buffer")
+    func resolvingWithKeepMineLeavesBufferAlone() async throws {
+        let fileURL = FileManager.default.temporaryDirectory
+            .appending(path: "cmux-file-preview-conflict-keep-\(UUID().uuidString).txt")
+        defer { try? FileManager.default.removeItem(at: fileURL) }
+        try "on disk\n".write(to: fileURL, atomically: true, encoding: .utf8)
+
+        let panel = FilePreviewPanel(
+            workspaceId: UUID(),
+            filePath: fileURL.path,
+            startFileWatcher: false
+        )
+        defer { panel.close() }
+        await panel.loadTextContent().value
+        panel.updateTextContent("unsaved edits\n")
+        try "changed on disk\n".write(to: fileURL, atomically: true, encoding: .utf8)
+        await panel.reloadFromDisk().value
+
+        panel.resolveSaveConflict(.keepMine)
+
+        #expect(panel.saveConflict == nil)
+        #expect(panel.textContent == "unsaved edits\n")
+        #expect(panel.isDirty, "keeping mine must leave the next save able to overwrite disk")
+    }
+
     @Test("Rapid text reloads run only the active and latest request")
     func rapidTextReloadsConflatePendingWork() async throws {
         let fileURL = FileManager.default.temporaryDirectory
