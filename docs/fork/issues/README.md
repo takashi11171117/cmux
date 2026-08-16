@@ -100,7 +100,7 @@ Phase 3（独立。Phase 0 完了後いつでも並行可）
 | 未確定-06（File Watch の粒度） | 本設計は File Watch を変更しないため作業が発生しない（NFR-12 は「変えないこと」のみ） |
 | 未確定-07（Inspector のショートカット衝突） | Inspector は MVP 対象外。本設計は新規ショートカットを追加しない。着手する場合は `KeyboardShortcutSettings` + Settings + `cmux.json` + docs の4点セットに乗せる |
 | 未確定-09（Phase 0 変更箇所マップ） | 詳細設計が「既存 `FilePreviewTextEditor` の読解」「Diff Viewer 方式の読解」を消化済み。**未消化は「競合4 PR（#1909 / #4801 / #5638 / #2864）の方式比較」のみ**。未確定-01 が D-1 で解決済みのため判断材料としては不要になっており、issue 化していない。**必要かどうかは要確認** |
-| 未確定-10（Image Preview の QuickLook 依存範囲） | 本設計は画像プレビューを変更しないため、MVP スコープに入れるかどうかが**要確認**。入れるなら別 issue が要る |
+| 未確定-10（Image Preview の残り2点） | **2026-08-17 に問いを差し替え**（旧版「QuickLook 依存範囲」は 01 §12 訂正の初版が誤りだったため無効）。画像は `.image` モードの独自実装で、**Fit / 100% / Zoom / Pan は実装済み** `[実コード: Sources/Panels/FilePreviewPanel.swift:3631-3681]`。残るのは **(1) 背景切替を足すか、(2) SVG が実際に表示されるか**の2点のみ。どちらも MVP 外として閉じてよく、入れるなら別 issue が要る |
 | REQ-24（Live Diff）/ REQ-25（LSP）/ REQ-26（Git Worktree） | 要件定義で MVP 対象外と明記済み |
 
 ## 詳細仕様への参照
