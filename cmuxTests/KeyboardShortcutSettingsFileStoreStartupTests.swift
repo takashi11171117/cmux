@@ -537,6 +537,57 @@ final class KeyboardShortcutSettingsFileStoreStartupTests: XCTestCase {
         }
     }
 
+    func testSettingsFileParsesFileEditorSyntaxHighlightAndLineNumbers() throws {
+        let defaults = UserDefaults.standard
+
+        try preservingDefaults(keys: [
+            FilePreviewSyntaxHighlightSettings.key,
+            FilePreviewLineNumberSettings.key,
+            settingsFileBackupsDefaultsKey,
+            importedManagedDefaultsKey
+        ]) {
+            defaults.removeObject(forKey: FilePreviewSyntaxHighlightSettings.key)
+            defaults.removeObject(forKey: FilePreviewLineNumberSettings.key)
+            defaults.removeObject(forKey: settingsFileBackupsDefaultsKey)
+            defaults.removeObject(forKey: importedManagedDefaultsKey)
+
+            // Both default on, unlike wordWrap, so the config has to opt *out* to prove
+            // the parser ran rather than the default answering.
+            XCTAssertTrue(FilePreviewSyntaxHighlightSettings.isEnabled(defaults: defaults))
+            XCTAssertTrue(FilePreviewLineNumberSettings.isEnabled(defaults: defaults))
+
+            let directoryURL = try makeTemporaryDirectory()
+            defer { try? FileManager.default.removeItem(at: directoryURL) }
+
+            let settingsFileURL = directoryURL.appendingPathComponent("cmux.json", isDirectory: false)
+            try writeSettingsFile(
+                """
+                {
+                  "fileEditor": {
+                    "syntaxHighlight": false,
+                    "lineNumbers": false
+                  }
+                }
+                """,
+                to: settingsFileURL
+            )
+
+            let store = KeyboardShortcutSettingsFileStore(
+                primaryPath: settingsFileURL.path,
+                fallbackPath: nil,
+                additionalFallbackPaths: [],
+                startWatching: false
+            )
+
+            withExtendedLifetime(store) {
+                XCTAssertFalse(defaults.bool(forKey: FilePreviewSyntaxHighlightSettings.key))
+                XCTAssertFalse(FilePreviewSyntaxHighlightSettings.isEnabled(defaults: defaults))
+                XCTAssertFalse(defaults.bool(forKey: FilePreviewLineNumberSettings.key))
+                XCTAssertFalse(FilePreviewLineNumberSettings.isEnabled(defaults: defaults))
+            }
+        }
+    }
+
     func testManagedAppearanceUserDefaultSurvivesSettingsFileReapplyUntilFileChanges() throws {
         let defaults = UserDefaults.standard
         let key = AppearanceSettings.appearanceModeKey

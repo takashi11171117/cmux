@@ -108,7 +108,11 @@ function buildSettingsFileExample(t: ConfigurationTranslation) {
 
   // "fileEditor": {
   //   // ${t("exampleFileEditorWordWrap")}
-  //   "wordWrap": false
+  //   "wordWrap": false,
+  //   // ${t("exampleFileEditorSyntaxHighlight")}
+  //   "syntaxHighlight": true,
+  //   // ${t("exampleFileEditorLineNumbers")}
+  //   "lineNumbers": true
   // },
 
   // "fileExplorer": {

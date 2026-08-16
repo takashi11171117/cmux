@@ -19,6 +19,30 @@ public struct FileEditorCatalogSection: SettingCatalogSection {
         userDefaultsKey: "fileEditor.wordWrap"
     )
 
+    /// Whether source files are colored by syntax.
+    ///
+    /// `true` (the default) colors keywords, strings, comments, numbers, types, and
+    /// attributes using the same palette the markdown viewer uses for fenced code, so a
+    /// code file and a code block look alike. Files whose extension maps to no known
+    /// grammar, and files past the highlighter's size budget, render as plain text
+    /// regardless. Changing this applies live to open editors.
+    public let syntaxHighlight = DefaultsKey<Bool>(
+        id: "fileEditor.syntaxHighlight",
+        defaultValue: true,
+        userDefaultsKey: "fileEditor.syntaxHighlight"
+    )
+
+    /// Whether a line-number ruler is drawn down the editor's left margin.
+    ///
+    /// `true` (the default) numbers logical lines: a soft-wrapped line keeps one number
+    /// rather than numbering each visual row. The ruler exists only while an editor is
+    /// open. Changing this applies live to open editors.
+    public let lineNumbers = DefaultsKey<Bool>(
+        id: "fileEditor.lineNumbers",
+        defaultValue: true,
+        userDefaultsKey: "fileEditor.lineNumbers"
+    )
+
     /// Creates the file editor settings section with its default keys.
     public init() {}
 }

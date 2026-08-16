@@ -30,6 +30,8 @@ struct MarkdownPanelView: View {
     @State private var copyConfirmation: CopyConfirmation? = nil
     @State private var copyConfirmationGeneration: Int = 0
     @AppStorage(FilePreviewWordWrapSettings.key) private var fileEditorWordWrap = FilePreviewWordWrapSettings.defaultEnabled
+    @AppStorage(FilePreviewSyntaxHighlightSettings.key) private var fileEditorSyntaxHighlight = FilePreviewSyntaxHighlightSettings.defaultEnabled
+    @AppStorage(FilePreviewLineNumberSettings.key) private var fileEditorLineNumbers = FilePreviewLineNumberSettings.defaultEnabled
 
     private enum CopyConfirmation: Equatable {
         case markdown
@@ -98,7 +100,10 @@ struct MarkdownPanelView: View {
                     themeBackgroundColor: appearance.contentBackgroundColor,
                     themeForegroundColor: themeForegroundColor,
                     drawsBackground: appearance.drawsContentBackground,
-                    wordWrap: fileEditorWordWrap
+                    wordWrap: fileEditorWordWrap,
+                    filePath: panel.filePath,
+                    syntaxHighlight: fileEditorSyntaxHighlight,
+                    lineNumbers: fileEditorLineNumbers
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }

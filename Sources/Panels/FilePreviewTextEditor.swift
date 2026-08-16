@@ -23,6 +23,16 @@ struct FilePreviewTextEditor<PanelModel>: NSViewRepresentable where PanelModel: 
     /// Whether long lines soft-wrap at the editor's right edge. Sourced from
     /// the persisted `fileEditor.wordWrap` setting; updates apply live.
     let wordWrap: Bool
+    /// Path of the edited file, used to pick a highlighting grammar by extension.
+    ///
+    /// Passed in rather than read off the panel because ``FilePreviewTextEditingPanel``
+    /// intentionally exposes only editing operations, and both conforming panels already
+    /// know their own path.
+    let filePath: String
+    /// Whether tokens are colored. Sourced from `fileEditor.syntaxHighlight`; live.
+    let syntaxHighlight: Bool
+    /// Whether the line-number ruler is drawn. Sourced from `fileEditor.lineNumbers`; live.
+    let lineNumbers: Bool
 
     func makeCoordinator() -> Coordinator {
         Coordinator(panel: panel)
@@ -46,28 +56,85 @@ struct FilePreviewTextEditor<PanelModel>: NSViewRepresentable where PanelModel: 
 
         scrollView.documentView = textView
         textView.applyFilePreviewWordWrap(wordWrap, scrollView: scrollView)
+
+        scrollView.hasVerticalRuler = true
+        scrollView.verticalRulerView = FilePreviewLineNumberRulerView(
+            scrollView: scrollView, textView: textView
+        )
+        scrollView.rulersVisible = lineNumbers
+
+        // Attaching here binds the scroll observer, but the size/language gate runs later:
+        // `panel.textContent` is still the empty initial value at this point, so a gate
+        // evaluated now would always conclude "small enough" and never fire in practice.
+        context.coordinator.syncHighlightController(
+            enabled: syntaxHighlight,
+            filePath: filePath,
+            palette: FilePreviewHighlightPalette(
+                background: themeBackgroundColor, foreground: themeForegroundColor
+            ),
+            textView: textView,
+            scrollView: scrollView
+        )
+
         Self.applyTheme(
             to: scrollView,
             backgroundColor: themeBackgroundColor,
             foregroundColor: themeForegroundColor,
-            drawsBackground: drawsBackground
+            drawsBackground: drawsBackground,
+            preservesTextColor: context.coordinator.highlightController?.isHighlighting ?? false
         )
         return scrollView
+    }
+
+    static func dismantleNSView(_ scrollView: NSScrollView, coordinator: Coordinator) {
+        // The scroll subscription's `for await` loop retains itself, so without this the
+        // controller, text view, and scroll view all outlive the closed panel.
+        coordinator.highlightController?.detach()
+        coordinator.highlightController = nil
     }
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         context.coordinator.panel = panel
         scrollView.isHidden = !isVisibleInUI
+
+        guard let textView = scrollView.documentView as? SavingTextView else {
+            Self.applyTheme(
+                to: scrollView,
+                backgroundColor: themeBackgroundColor,
+                foregroundColor: themeForegroundColor,
+                drawsBackground: drawsBackground,
+                preservesTextColor: false
+            )
+            return
+        }
+
+        // Reconcile the controller *before* applying the theme: turning highlighting off
+        // has to be visible to `preservesTextColor` in the same pass, otherwise the blanket
+        // `textColor` assignment is skipped for one update and stale colors linger.
+        context.coordinator.syncHighlightController(
+            enabled: syntaxHighlight,
+            filePath: filePath,
+            palette: FilePreviewHighlightPalette(
+                background: themeBackgroundColor, foreground: themeForegroundColor
+            ),
+            textView: textView,
+            scrollView: scrollView
+        )
+
         Self.applyTheme(
             to: scrollView,
             backgroundColor: themeBackgroundColor,
             foregroundColor: themeForegroundColor,
-            drawsBackground: drawsBackground
+            drawsBackground: drawsBackground,
+            preservesTextColor: context.coordinator.highlightController?.isHighlighting ?? false
         )
-        guard let textView = scrollView.documentView as? SavingTextView else { return }
         textView.panel = panel
         textView.applyFilePreviewTextEditorInsets()
         textView.applyFilePreviewWordWrap(wordWrap, scrollView: scrollView)
+        scrollView.rulersVisible = lineNumbers
+        // Wrapping changes which fragments start a logical line, so the ruler has to redraw
+        // even though the text itself did not change.
+        scrollView.verticalRulerView?.needsDisplay = true
         panel.attachTextView(textView)
         guard textView.string != panel.textContent else { return }
         let selectedRanges = textView.selectedRanges
@@ -90,13 +157,32 @@ struct FilePreviewTextEditor<PanelModel>: NSViewRepresentable where PanelModel: 
         )
         clipView.scroll(to: constrained.origin)
         scrollView.reflectScrolledClipView(clipView)
+
+        // Assigning `textView.string` wipes every attribute in the storage, so this is both
+        // where the gate is evaluated and where re-highlighting has to be triggered.
+        context.coordinator.highlightController?.noteDocumentReplaced(
+            text: textView.string, filePath: filePath
+        )
+        // Incremental patching cannot describe a wholesale replacement, so the index is
+        // rebuilt rather than patched here.
+        (scrollView.verticalRulerView as? FilePreviewLineNumberRulerView)?
+            .resetIndex(text: textView.string as NSString)
     }
 
+    /// Applies editor chrome colors.
+    ///
+    /// - Parameter preservesTextColor: When `true`, skips the blanket `textView.textColor`
+    ///   assignment. That setter rewrites `.foregroundColor` across the entire storage, and
+    ///   because this runs on every SwiftUI update it would repaint syntax colors back to
+    ///   body color on the next unrelated state change. New typing still picks up the body
+    ///   color through `typingAttributes`, and the highlight controller paints the body
+    ///   color across the document itself.
     static func applyTheme(
         to scrollView: NSScrollView,
         backgroundColor: NSColor,
         foregroundColor: NSColor,
-        drawsBackground: Bool
+        drawsBackground: Bool,
+        preservesTextColor: Bool = false
     ) {
         let resolvedBackgroundColor = drawsBackground ? backgroundColor : .clear
         scrollView.drawsBackground = drawsBackground
@@ -106,7 +192,11 @@ struct FilePreviewTextEditor<PanelModel>: NSViewRepresentable where PanelModel: 
         if let textView = scrollView.documentView as? NSTextView {
             textView.drawsBackground = drawsBackground
             textView.backgroundColor = resolvedBackgroundColor
-            textView.textColor = foregroundColor
+            if preservesTextColor {
+                textView.typingAttributes[.foregroundColor] = foregroundColor
+            } else {
+                textView.textColor = foregroundColor
+            }
             textView.insertionPointColor = foregroundColor
         }
     }
@@ -114,6 +204,7 @@ struct FilePreviewTextEditor<PanelModel>: NSViewRepresentable where PanelModel: 
     final class Coordinator: NSObject, NSTextViewDelegate {
         var panel: PanelModel
         var isApplyingPanelUpdate = false
+        var highlightController: FilePreviewSyntaxHighlightController?
 
         init(panel: PanelModel) {
             self.panel = panel
@@ -121,10 +212,48 @@ struct FilePreviewTextEditor<PanelModel>: NSViewRepresentable where PanelModel: 
 
         deinit {}
 
+        /// Creates, updates, or tears down the controller to match `enabled`.
+        ///
+        /// Creating lazily rather than always means an editor with highlighting switched
+        /// off constructs nothing at all, which is what NFR-03 asks for.
+        @MainActor
+        func syncHighlightController(
+            enabled: Bool,
+            filePath: String,
+            palette: FilePreviewHighlightPalette,
+            textView: NSTextView,
+            scrollView: NSScrollView
+        ) {
+            guard enabled else {
+                highlightController?.setEnabled(false)
+                highlightController?.detach()
+                highlightController = nil
+                return
+            }
+
+            if let controller = highlightController {
+                controller.setEnabled(true)
+                controller.setPalette(palette)
+                return
+            }
+
+            let controller = FilePreviewSyntaxHighlightController(
+                engine: FilePreviewHighlightJavaScriptEngine(),
+                palette: palette,
+                filePath: filePath
+            )
+            controller.attach(textView: textView, scrollView: scrollView)
+            highlightController = controller
+            if !textView.string.isEmpty {
+                controller.noteDocumentReplaced(text: textView.string, filePath: filePath)
+            }
+        }
+
         func textDidChange(_ notification: Notification) {
             guard !isApplyingPanelUpdate,
                   let textView = notification.object as? NSTextView else { return }
             panel.updateTextContent(textView.string)
+            highlightController?.noteTextDidChange(text: textView.string)
         }
     }
 }
@@ -346,6 +475,12 @@ final class SavingTextView: NSTextView {
         let nextFont = GlobalFontMagnification.monospacedSystemFont(ofSize: previewFontSize, weight: .regular)
         font = nextFont
         typingAttributes[.font] = nextFont
+        // Every zoom path (pinch, modifier-scroll, smart zoom, keyboard shortcut, app-wide
+        // magnification) funnels through here, so keeping the ruler in step needs exactly
+        // one line rather than one per entry point. Reached through the scroll view so
+        // `SavingTextView` gains no stored property.
+        (enclosingScrollView?.verticalRulerView as? FilePreviewLineNumberRulerView)?
+            .adoptFont(nextFont)
     }
 
     private func clearPendingShortcutChordPrefixes() {

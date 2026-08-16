@@ -17,10 +17,17 @@ struct FilePreviewHighlightPaletteTests {
     private static let darkBackground = NSColor(
         srgbRed: 13 / 255, green: 17 / 255, blue: 23 / 255, alpha: 1
     )
+    /// Body colors the editor would use; `plain` is taken from these, not the theme file.
+    private static let lightForeground = NSColor(
+        srgbRed: 36 / 255, green: 41 / 255, blue: 46 / 255, alpha: 1
+    )
+    private static let darkForeground = NSColor(
+        srgbRed: 201 / 255, green: 209 / 255, blue: 217 / 255, alpha: 1
+    )
 
     @Test("every role is legible on the light background")
     func lightVariantIsLegible() {
-        let palette = FilePreviewHighlightPalette(background: Self.lightBackground)
+        let palette = FilePreviewHighlightPalette(background: Self.lightBackground, foreground: Self.lightForeground)
         for role in FilePreviewTokenRole.allCases {
             let ratio = palette.contrastRatio(for: role)
             #expect(
@@ -32,7 +39,7 @@ struct FilePreviewHighlightPaletteTests {
 
     @Test("every role is legible on the dark background")
     func darkVariantIsLegible() {
-        let palette = FilePreviewHighlightPalette(background: Self.darkBackground)
+        let palette = FilePreviewHighlightPalette(background: Self.darkBackground, foreground: Self.darkForeground)
         for role in FilePreviewTokenRole.allCases {
             let ratio = palette.contrastRatio(for: role)
             #expect(
@@ -44,14 +51,14 @@ struct FilePreviewHighlightPaletteTests {
 
     @Test("background luminance selects the variant")
     func variantFollowsBackground() {
-        #expect(FilePreviewHighlightPalette(background: Self.lightBackground).isDark == false)
-        #expect(FilePreviewHighlightPalette(background: Self.darkBackground).isDark == true)
+        #expect(FilePreviewHighlightPalette(background: Self.lightBackground, foreground: Self.lightForeground).isDark == false)
+        #expect(FilePreviewHighlightPalette(background: Self.darkBackground, foreground: Self.darkForeground).isDark == true)
     }
 
     @Test("variants do not share colors for the same role")
     func variantsDiffer() {
-        let light = FilePreviewHighlightPalette(background: Self.lightBackground)
-        let dark = FilePreviewHighlightPalette(background: Self.darkBackground)
+        let light = FilePreviewHighlightPalette(background: Self.lightBackground, foreground: Self.lightForeground)
+        let dark = FilePreviewHighlightPalette(background: Self.darkBackground, foreground: Self.darkForeground)
         for role in FilePreviewTokenRole.allCases {
             #expect(
                 light.color(for: role) != dark.color(for: role),
@@ -65,7 +72,7 @@ struct FilePreviewHighlightPaletteTests {
         // FR-01 AC1 requires keywords, strings, and comments to render in a color other
         // than the body color. Guarding the three the acceptance criterion names.
         for background in [Self.lightBackground, Self.darkBackground] {
-            let palette = FilePreviewHighlightPalette(background: background)
+            let palette = FilePreviewHighlightPalette(background: background, foreground: background == Self.lightBackground ? Self.lightForeground : Self.darkForeground)
             let plain = palette.color(for: .plain)
             for role in [FilePreviewTokenRole.keyword, .string, .comment] {
                 #expect(
@@ -88,7 +95,7 @@ struct FilePreviewHighlightPaletteTests {
 
     @Test("contrast of black on white is the WCAG maximum")
     func contrastRangeAnchor() {
-        let palette = FilePreviewHighlightPalette(background: Self.lightBackground)
+        let palette = FilePreviewHighlightPalette(background: Self.lightBackground, foreground: Self.lightForeground)
         let ratio = palette.contrastRatio(for: .plain)
         #expect(ratio > 1.0)
         #expect(ratio <= 21.0)
@@ -100,7 +107,7 @@ struct FilePreviewHighlightPaletteTests {
         // is out of their design range; this only proves nothing crashes or falls back to
         // a missing entry, not that the result is pleasant.
         let midGray = NSColor(srgbRed: 0.5, green: 0.5, blue: 0.5, alpha: 1)
-        let palette = FilePreviewHighlightPalette(background: midGray)
+        let palette = FilePreviewHighlightPalette(background: midGray, foreground: .white)
         for role in FilePreviewTokenRole.allCases {
             #expect(palette.color(for: role).usingColorSpace(.sRGB) != nil)
         }

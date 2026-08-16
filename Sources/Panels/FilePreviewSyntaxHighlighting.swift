@@ -28,6 +28,14 @@ import Foundation
 /// apply, not necessarily about how much the engine scans: highlight.js walks the
 /// full text regardless (measured in AFIDE-01).
 ///
+/// ## Ordering
+///
+/// Order is **not** specified. Engines emit nested tokens innermost-first (an
+/// interpolation inside a string closes before the string does), so applying runs in
+/// arrival order would let the outer run overwrite the inner one. The caller sorts by
+/// location ascending, then length descending, and applies in that order so the
+/// innermost run wins — matching how nested `<span>` elements resolve in a browser.
+///
 /// ## Failure
 ///
 /// Deliberately not `throws`. An engine that fails, times out, or does not know the

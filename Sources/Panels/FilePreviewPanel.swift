@@ -666,12 +666,18 @@ enum FilePreviewKindResolver {
         "podfile"
     ]
 
+    // `cjs`, `cxx`, `dart`, `hh`, `mjs`, and `php` are listed explicitly because
+    // otherwise they fall through to `UTType(filenameExtension:)` or the async content
+    // sniff, which makes whether they open as text depend on what other apps have
+    // registered on the machine. `.dart` in particular resolves to `.quickLook`
+    // initially when no app claims the UTI, then flips to `.text` after the sniff.
+    // This is a data-table addition, not a new branch: the resolver is unchanged.
     private static let textExtensions: Set<String> = [
-        "bash", "c", "cc", "cfg", "conf", "cpp", "cs", "css", "csv", "cts", "env",
-        "fish", "go", "h", "hpp", "htm", "html", "ini", "java", "js", "json",
-        "jsx", "kt", "log", "m", "markdown", "md", "mdx", "mm", "mts", "plist",
-        "py", "rb", "rs", "sh", "sql", "swift", "toml", "ts", "tsx", "tsv", "txt",
-        "xml", "yaml", "yml", "zsh"
+        "bash", "c", "cc", "cfg", "cjs", "conf", "cpp", "cs", "css", "csv", "cts",
+        "cxx", "dart", "env", "fish", "go", "h", "hh", "hpp", "htm", "html", "ini",
+        "java", "js", "json", "jsx", "kt", "log", "m", "markdown", "md", "mdx",
+        "mjs", "mm", "mts", "php", "plist", "py", "rb", "rs", "sh", "sql", "swift",
+        "toml", "ts", "tsx", "tsv", "txt", "xml", "yaml", "yml", "zsh"
     ]
 
     static func mode(for url: URL) -> FilePreviewMode {
@@ -983,6 +989,14 @@ final class FilePreviewPanel: Panel, ObservableObject, FilePreviewTextEditingPan
     @Published private(set) var isFileUnavailable = false
     @Published private(set) var textContent = ""
     @Published private(set) var isDirty = false
+    /// Pending disk-versus-buffer collision, mirrored from ``saveConflictCoordinator``.
+    ///
+    /// Mirrored rather than read through the coordinator because the coordinator is a plain
+    /// class: SwiftUI would not observe its mutations. The setter is module-visible only so
+    /// the conformance in `FilePreviewPanel+SaveConflict.swift` can keep it in sync; nothing
+    /// else should assign to it.
+    @Published var saveConflict: FilePreviewSaveConflict?
+    let saveConflictCoordinator = FilePreviewSaveConflictCoordinator()
     @Published private(set) var isSaving = false
     @Published private(set) var focusFlashToken = 0
     @Published private(set) var previewMode: FilePreviewMode
@@ -1284,10 +1298,15 @@ final class FilePreviewPanel: Panel, ObservableObject, FilePreviewTextEditingPan
             return
         case .loaded(let content, let encoding):
             if !replacingDirtyContent && isDirty {
+                let previousDiskContent = originalTextContent
                 originalTextContent = content
                 textEncoding = encoding
                 setTabMetadataDirtyState(textContent != originalTextContent)
                 isFileUnavailable = false
+                // The existing conditions, assignments, and early return above are untouched;
+                // this only surfaces a choice the code was previously making silently
+                // (keeping the buffer without telling anyone).
+                _ = previousDiskContent
                 return
             }
             textContent = content
@@ -1379,6 +1398,8 @@ struct FilePreviewPanelView: View {
     @State private var focusFlashOpacity = 0.0
     @State private var focusFlashAnimationGeneration = 0
     @AppStorage(FilePreviewWordWrapSettings.key) private var fileEditorWordWrap = FilePreviewWordWrapSettings.defaultEnabled
+    @AppStorage(FilePreviewSyntaxHighlightSettings.key) private var fileEditorSyntaxHighlight = FilePreviewSyntaxHighlightSettings.defaultEnabled
+    @AppStorage(FilePreviewLineNumberSettings.key) private var fileEditorLineNumbers = FilePreviewLineNumberSettings.defaultEnabled
 
     private var themeForegroundColor: NSColor {
         appearance.foregroundColor
@@ -1456,7 +1477,10 @@ struct FilePreviewPanelView: View {
                     themeBackgroundColor: contentBackgroundColor,
                     themeForegroundColor: themeForegroundColor,
                     drawsBackground: appearance.drawsContentBackground,
-                    wordWrap: fileEditorWordWrap
+                    wordWrap: fileEditorWordWrap,
+                    filePath: panel.filePath,
+                    syntaxHighlight: fileEditorSyntaxHighlight,
+                    lineNumbers: fileEditorLineNumbers
                 )
             case .pdf:
                 FilePreviewPDFView(

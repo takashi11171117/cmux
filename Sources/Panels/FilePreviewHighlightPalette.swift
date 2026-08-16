@@ -13,7 +13,7 @@ import Foundation
 /// re-tokenization.
 ///
 /// ```swift
-/// let palette = FilePreviewHighlightPalette(background: .textBackgroundColor)
+/// let palette = FilePreviewHighlightPalette(background: .textBackgroundColor, foreground: .textColor)
 /// let color = palette.color(for: .keyword)
 /// ```
 struct FilePreviewHighlightPalette {
@@ -25,23 +25,33 @@ struct FilePreviewHighlightPalette {
 
     private let colorsByRole: [FilePreviewTokenRole: NSColor]
 
-    /// Builds the palette for `background`, picking the light or dark variant.
+    /// Builds the palette for one editor theme, picking the light or dark variant.
     ///
     /// Selection uses WCAG relative luminance against `0.179`, the point where black
     /// and white text achieve equal contrast, rather than a naive `0.5` on raw
     /// channel values.
+    ///
+    /// ``FilePreviewTokenRole/plain`` is taken from `foreground` rather than from the
+    /// theme file. Unclassified text is the majority of any document, and it should stay
+    /// exactly the color the editor would have drawn without highlighting — otherwise
+    /// enabling highlighting silently restyles ordinary prose, and the two code paths
+    /// (highlighted and not) disagree about what "body text" looks like.
     ///
     /// - Note: Both source themes assume their own background (`#ffffff` / `#0d1117`).
     ///   The editor's `themeBackgroundColor` can be any color, so a mid-luminance
     ///   custom theme may land near the fence and get a variant tuned for a more
     ///   extreme background. ``contrastRatio(for:)`` exists to detect that case.
     ///
-    /// - Parameter background: Editor background the text will be drawn on.
-    init(background: NSColor) {
+    /// - Parameters:
+    ///   - background: Editor background the text will be drawn on.
+    ///   - foreground: Editor body color, used for ``FilePreviewTokenRole/plain``.
+    init(background: NSColor, foreground: NSColor) {
         let dark = Self.relativeLuminance(of: background) < 0.179
         self.background = background
         self.isDark = dark
-        self.colorsByRole = dark ? Self.darkColors : Self.lightColors
+        var colors = dark ? Self.darkColors : Self.lightColors
+        colors[.plain] = foreground
+        self.colorsByRole = colors
     }
 
     /// Returns the color for `role` under this palette's background.
@@ -106,7 +116,7 @@ struct FilePreviewHighlightPalette {
     /// ``FilePreviewTokenRole/type``; spending it on attributes would make a built-in
     /// type and an attribute swap appearances. Kept faithful pending dogfood.
     private static let lightColors: [FilePreviewTokenRole: NSColor] = [
-        .plain: srgb(0x24292E),      // .hljs
+        .plain: srgb(0x24292E),      // .hljs — fallback only; init overrides with the theme's foreground
         .keyword: srgb(0xD73A49),    // .hljs-keyword
         .string: srgb(0x032F62),     // .hljs-string
         .comment: srgb(0x6A737D),    // .hljs-comment
@@ -117,7 +127,7 @@ struct FilePreviewHighlightPalette {
 
     /// github-dark theme, from `Resources/markdown-viewer/highlight-github-dark.css`.
     private static let darkColors: [FilePreviewTokenRole: NSColor] = [
-        .plain: srgb(0xC9D1D9),
+        .plain: srgb(0xC9D1D9),      // fallback only; init overrides with the theme's foreground
         .keyword: srgb(0xFF7B72),
         .string: srgb(0xA5D6FF),
         .comment: srgb(0x8B949E),

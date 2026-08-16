@@ -32,6 +32,12 @@ final class MarkdownPanel: Panel, ObservableObject, FilePreviewTextEditingPanel 
 
     /// Whether TextEdit mode has unsaved changes.
     @Published private(set) var isDirty: Bool = false
+    /// Pending disk-versus-buffer collision, mirrored from ``saveConflictCoordinator``.
+    ///
+    /// Setter is module-visible only so the conformance in `MarkdownPanel+SaveConflict.swift`
+    /// can keep it in sync; nothing else should assign to it.
+    @Published var saveConflict: FilePreviewSaveConflict?
+    let saveConflictCoordinator = FilePreviewSaveConflictCoordinator()
 
     /// Whether TextEdit mode is saving to disk.
     @Published private(set) var isSaving: Bool = false

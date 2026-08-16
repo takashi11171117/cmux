@@ -26,6 +26,47 @@ struct FilePreviewKindResolverTests {
         }
     }
 
+    @Test("Newly listed code extensions resolve to text without a sniff")
+    func newlyListedCodeExtensionsResolveToText() throws {
+        // These six were absent from `textExtensions`, so they previously fell through
+        // to `UTType(filenameExtension:)` or the async content sniff — which makes the
+        // answer depend on what other apps have registered on the machine. Asserting on
+        // `initialMode` (before any sniff) is what pins the behavior; `mode` alone would
+        // pass even if the file first flashed as QuickLook.
+        for fileExtension in ["dart", "php", "mjs", "cjs", "cxx", "hh"] {
+            let url = try temporaryFile(
+                extension: fileExtension,
+                contents: "const answer = 42;\n"
+            )
+            defer { try? FileManager.default.removeItem(at: url) }
+
+            #expect(
+                FilePreviewKindResolver.initialMode(for: url) == .text,
+                "Expected .\(fileExtension) to resolve to text without depending on UTI registration."
+            )
+            #expect(FilePreviewKindResolver.mode(for: url) == .text)
+        }
+    }
+
+    @Test("Adding code extensions leaves image and PDF routing alone")
+    func imageAndDocumentRoutingUnchanged() throws {
+        let cases: [(ext: String, mode: FilePreviewMode)] = [
+            ("png", .image),
+            ("jpg", .image),
+            ("gif", .image),
+            ("pdf", .pdf),
+        ]
+        for entry in cases {
+            let url = try temporaryFile(extension: entry.ext, data: Data([0x00, 0x01, 0x02, 0x03]))
+            defer { try? FileManager.default.removeItem(at: url) }
+
+            #expect(
+                FilePreviewKindResolver.mode(for: url) == entry.mode,
+                "Expected .\(entry.ext) to stay \(entry.mode)."
+            )
+        }
+    }
+
     @Test("Movie file extensions keep media preview")
     func movieFileExtensionsKeepMediaPreview() throws {
         for fileExtension in ["mov", "mp4"] {

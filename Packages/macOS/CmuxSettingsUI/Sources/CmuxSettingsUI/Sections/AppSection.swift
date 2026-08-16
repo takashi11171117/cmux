@@ -43,6 +43,8 @@ public struct AppSection: View {
     @State private var canvasPaneGap: DefaultsValueModel<Int>
     @State private var canvasSnapping: DefaultsValueModel<Bool>
     @State private var fileEditorWordWrap: DefaultsValueModel<Bool>
+    @State private var fileEditorSyntaxHighlight: DefaultsValueModel<Bool>
+    @State private var fileEditorLineNumbers: DefaultsValueModel<Bool>
     @State private var iMessage: DefaultsValueModel<Bool>
     @State private var reorder: DefaultsValueModel<Bool>
     @State private var dockBadge: DefaultsValueModel<Bool>
@@ -97,6 +99,8 @@ public struct AppSection: View {
         _canvasPaneGap = State(initialValue: DefaultsValueModel(store: defaultsStore, key: catalog.canvas.paneGap))
         _canvasSnapping = State(initialValue: DefaultsValueModel(store: defaultsStore, key: catalog.canvas.snappingEnabled))
         _fileEditorWordWrap = State(initialValue: DefaultsValueModel(store: defaultsStore, key: catalog.fileEditor.wordWrap))
+        _fileEditorSyntaxHighlight = State(initialValue: DefaultsValueModel(store: defaultsStore, key: catalog.fileEditor.syntaxHighlight))
+        _fileEditorLineNumbers = State(initialValue: DefaultsValueModel(store: defaultsStore, key: catalog.fileEditor.lineNumbers))
         _iMessage = State(initialValue: DefaultsValueModel(store: defaultsStore, key: catalog.app.iMessageMode))
         _reorder = State(initialValue: DefaultsValueModel(store: defaultsStore, key: catalog.app.reorderOnNotification))
         _dockBadge = State(initialValue: DefaultsValueModel(store: defaultsStore, key: catalog.notifications.dockBadge))
@@ -140,7 +144,7 @@ public struct AppSection: View {
             mainCard
         }
         .task {
-            startSettingsObservation([language, appearance, appIcon, placement, inheritDir, minimalMode, keepWorkspaceOpen, firstClick, focusHistoryIncludesPanesAndTabs, fileDrop, preferredEditor, openSupported, openMarkdown, globalFontMagnification, markdownFontSize, markdownFontFamily, markdownMaxWidth, canvasPaneGap, canvasSnapping, fileEditorWordWrap, iMessage, reorder, dockBadge, menuBarOnly, showInMenuBar, paneRing, paneFlash, desktopNotifications, agentPermissionPrompt, agentTurnComplete, agentIdleReminder, soundName, soundCommand, customSoundFile, telemetry, confirmQuit, warnCloseTab, warnCloseX, hideCloseButton, renameSelects, paletteAllSurfaces])
+            startSettingsObservation([language, appearance, appIcon, placement, inheritDir, minimalMode, keepWorkspaceOpen, firstClick, focusHistoryIncludesPanesAndTabs, fileDrop, preferredEditor, openSupported, openMarkdown, globalFontMagnification, markdownFontSize, markdownFontFamily, markdownMaxWidth, canvasPaneGap, canvasSnapping, fileEditorWordWrap, fileEditorSyntaxHighlight, fileEditorLineNumbers, iMessage, reorder, dockBadge, menuBarOnly, showInMenuBar, paneRing, paneFlash, desktopNotifications, agentPermissionPrompt, agentTurnComplete, agentIdleReminder, soundName, soundCommand, customSoundFile, telemetry, confirmQuit, warnCloseTab, warnCloseX, hideCloseButton, renameSelects, paletteAllSurfaces])
             if languageAtAppear == nil { languageAtAppear = language.current }; if telemetryAtAppear == nil { telemetryAtAppear = telemetry.current }
         }
     }
@@ -510,6 +514,32 @@ public struct AppSection: View {
                     .labelsHidden()
                     .controlSize(.small)
                     .accessibilityIdentifier("SettingsFileEditorWordWrapToggle")
+            }
+            SettingsCardDivider()
+
+            // Syntax Highlighting
+            SettingsCardRow(
+                configurationReview: .json("fileEditor.syntaxHighlight"),
+                String(localized: "settings.app.fileEditorSyntaxHighlight", defaultValue: "Syntax Highlighting"),
+                subtitle: String(localized: "settings.app.fileEditorSyntaxHighlight.subtitle", defaultValue: "Color keywords, strings, and comments in the plain-text file editor. Files with no known grammar stay plain.")
+            ) {
+                Toggle("", isOn: Binding(get: { fileEditorSyntaxHighlight.current }, set: { fileEditorSyntaxHighlight.set($0) }))
+                    .labelsHidden()
+                    .controlSize(.small)
+                    .accessibilityIdentifier("SettingsFileEditorSyntaxHighlightToggle")
+            }
+            SettingsCardDivider()
+
+            // Line Numbers
+            SettingsCardRow(
+                configurationReview: .json("fileEditor.lineNumbers"),
+                String(localized: "settings.app.fileEditorLineNumbers", defaultValue: "Line Numbers"),
+                subtitle: String(localized: "settings.app.fileEditorLineNumbers.subtitle", defaultValue: "Show line numbers in the left margin of the plain-text file editor. Wrapped lines keep a single number.")
+            ) {
+                Toggle("", isOn: Binding(get: { fileEditorLineNumbers.current }, set: { fileEditorLineNumbers.set($0) }))
+                    .labelsHidden()
+                    .controlSize(.small)
+                    .accessibilityIdentifier("SettingsFileEditorLineNumbersToggle")
             }
             SettingsCardDivider()
 

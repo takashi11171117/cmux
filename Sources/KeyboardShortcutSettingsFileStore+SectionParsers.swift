@@ -13,6 +13,16 @@ extension CmuxSettingsFileStore {
         } else if section.keys.contains("wordWrap") {
             logInvalid("fileEditor.wordWrap", sourcePath: sourcePath)
         }
+        if let value = jsonBool(section["syntaxHighlight"]) {
+            snapshot.managedUserDefaults[FilePreviewSyntaxHighlightSettings.key] = .bool(value)
+        } else if section.keys.contains("syntaxHighlight") {
+            logInvalid("fileEditor.syntaxHighlight", sourcePath: sourcePath)
+        }
+        if let value = jsonBool(section["lineNumbers"]) {
+            snapshot.managedUserDefaults[FilePreviewLineNumberSettings.key] = .bool(value)
+        } else if section.keys.contains("lineNumbers") {
+            logInvalid("fileEditor.lineNumbers", sourcePath: sourcePath)
+        }
     }
 
     func parseFileExplorerSection(

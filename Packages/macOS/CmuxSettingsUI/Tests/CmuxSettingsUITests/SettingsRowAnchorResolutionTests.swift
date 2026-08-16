@@ -82,6 +82,8 @@ struct SettingsRowAnchorResolutionTests {
         "canvas.snappingEnabled",
         "customSidebars.renderer",
         "fileEditor.wordWrap",
+        "fileEditor.syntaxHighlight",
+        "fileEditor.lineNumbers",
         "mobile.artifactFolderAccess",
         "notifications.agentIdleReminder",
         "notifications.agentPermissionPrompt",

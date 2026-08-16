@@ -118442,6 +118442,74 @@
         }
       }
     },
+    "filePreview.saveConflict.keepMine": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep Mine"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自分の変更を保持"
+          }
+        }
+      }
+    },
+    "filePreview.saveConflict.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You have unsaved edits. Choose how to continue."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未保存の編集があります。どうするか選んでください。"
+          }
+        }
+      }
+    },
+    "filePreview.saveConflict.reload": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reload"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再読み込み"
+          }
+        }
+      }
+    },
+    "filePreview.saveConflict.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This file changed on disk"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このファイルはディスク上で変更されました"
+          }
+        }
+      }
+    },
     "filePreview.share": {
       "extractionState": "manual",
       "localizations": {
@@ -152929,6 +152997,74 @@
         }
       }
     },
+    "settings.app.fileEditorLineNumbers": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Line Numbers"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "行番号"
+          }
+        }
+      }
+    },
+    "settings.app.fileEditorLineNumbers.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show line numbers in the left margin of the plain-text file editor. Wrapped lines keep a single number."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プレーンテキストのファイルエディタの左余白に行番号を表示します。折り返された行も番号は1つです。"
+          }
+        }
+      }
+    },
+    "settings.app.fileEditorSyntaxHighlight": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Syntax Highlighting"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "シンタックスハイライト"
+          }
+        }
+      }
+    },
+    "settings.app.fileEditorSyntaxHighlight.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Color keywords, strings, and comments in the plain-text file editor. Files with no known grammar stay plain."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プレーンテキストのファイルエディタでキーワード・文字列・コメントに色を付けます。既知の文法がないファイルはプレーン表示のままです。"
+          }
+        }
+      }
+    },
     "settings.app.fileEditorWordWrap": {
       "extractionState": "manual",
       "localizations": {
@@ -185543,6 +185679,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "notifications.dockBadge badge dock unread count icon notifications red bubble 應用程式 一般 偏好設定 行為 選單列 狀態 側邊欄 工作區 分頁 顏色 調色盤 徽章 已選取 反白 指示器 作用中 點 通知 未讀 訊息 圓環 閃爍 聲音 桌面 提醒 App 圖示 標記"
+          }
+        }
+      }
+    },
+    "settings.search.alias.setting.app.file-editor-line-numbers": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "fileEditor.lineNumbers line numbers ruler gutter margin numbering editor preview"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "fileEditor.lineNumbers line numbers ruler gutter margin numbering editor preview 行番号 行 番号 ルーラー 余白 エディタ"
+          }
+        }
+      }
+    },
+    "settings.search.alias.setting.app.file-editor-syntax-highlight": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "fileEditor.syntaxHighlight syntax highlight highlighting color colour keywords strings comments code source grammar editor preview"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "fileEditor.syntaxHighlight syntax highlight highlighting color colour keywords strings comments code source grammar editor preview シンタックス ハイライト 色 キーワード 文字列 コメント コード エディタ"
           }
         }
       }
