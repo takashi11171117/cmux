@@ -17,15 +17,15 @@
 | AFIDE-01 | [シンタックスハイライトエンジン選定（未確定-02 の解決）](./afide-01_syntax-highlight-engine-selection.md)（**調査完了** → [結果](./afide-01_調査結果.md)） | 調査 | なし | NFR-11, FR-01/02/03/11 |
 | AFIDE-02 | [upstream 追従とビルド・テスト基準線の確立](./afide-02_upstream-sync-baseline.md)（**基準線は完了 / 追従は保留** → [記録](./afide-02_基準線記録.md)） | 準備 | なし | NFR-10, NFR-08, NFR-09 |
 | AFIDE-03 | [Session Restore 回帰フィクスチャとテスト](./afide-03_session-restore-regression-fixture.md) | テスト | 02 | NFR-01, NFR-02 |
-| AFIDE-04 | [設定キー `fileEditor.syntaxHighlight` / `.lineNumbers` の追加](./afide-04_file-editor-settings-keys.md) | 実装 | 02（03 完了後が望ましい） | FR-04, FR-06, D-02 |
-| AFIDE-05 | [ハイライト基盤の値型と言語判定ポリシー](./afide-05_highlight-value-types-and-policy.md) | 実装 | 02 | FR-02, FR-03, FR-11, NFR-05 |
-| AFIDE-06 | [シンタックスハイライトエンジンの実装](./afide-06_highlight-engine-implementation.md) | 実装 | 01, 05 | FR-01, NFR-03/04/07/11 |
-| AFIDE-07 | [`FilePreviewSyntaxHighlightController` の実装](./afide-07_highlight-controller.md) | 実装 | 05 | FR-01, FR-03, FR-11, NFR-03/04 |
-| AFIDE-08 | [ハイライトのエディタ結線と `applyTheme` 対処](./afide-08_highlight-editor-wiring.md) | 実装 | 04, 06, 07 | FR-01, FR-11, NFR-06/07 |
-| AFIDE-09 | [`FilePreviewLineIndex` の実装](./afide-09_line-index.md) | 実装 | 02 | FR-05, NFR-04 |
-| AFIDE-10 | [行番号表示](./afide-10_line-number-ruler.md) | 実装 | 04, 09 | FR-05, FR-06, NFR-14 |
-| AFIDE-11 | [コード拡張子のルーティング確定と入口別検証](./afide-11_text-extensions-and-entrypoint-verification.md) | 実装 | 02 | FR-10, FR-02 AC1, NFR-13 |
-| AFIDE-12 | [外部変更 × 未保存バッファの選択 UI](./afide-12_save-conflict-ui.md) | 実装 | 02（マージ可否は 13 に依存） | FR-07, NFR-06, NFR-12 |
+| AFIDE-04 | [設定キー `fileEditor.syntaxHighlight` / `.lineNumbers` の追加](./afide-04_file-editor-settings-keys.md)（**完了**） | 実装 | 02（03 完了後が望ましい） | FR-04, FR-06, D-02 |
+| AFIDE-05 | [ハイライト基盤の値型と言語判定ポリシー](./afide-05_highlight-value-types-and-policy.md)（**完了**） | 実装 | 02 | FR-02, FR-03, FR-11, NFR-05 |
+| AFIDE-06 | [シンタックスハイライトエンジンの実装](./afide-06_highlight-engine-implementation.md)（**完了**） | 実装 | 01, 05 | FR-01, NFR-03/04/07/11 |
+| AFIDE-07 | [`FilePreviewSyntaxHighlightController` の実装](./afide-07_highlight-controller.md)（**完了**） | 実装 | 05 | FR-01, FR-03, FR-11, NFR-03/04 |
+| AFIDE-08 | [ハイライトのエディタ結線と `applyTheme` 対処](./afide-08_highlight-editor-wiring.md)（**完了**） | 実装 | 04, 06, 07 | FR-01, FR-11, NFR-06/07 |
+| AFIDE-09 | [`FilePreviewLineIndex` の実装](./afide-09_line-index.md)（**完了**） | 実装 | 02 | FR-05, NFR-04 |
+| AFIDE-10 | [行番号表示](./afide-10_line-number-ruler.md)（**完了**） | 実装 | 04, 09 | FR-05, FR-06, NFR-14 |
+| AFIDE-11 | [コード拡張子のルーティング確定と入口別検証](./afide-11_text-extensions-and-entrypoint-verification.md)（**完了**） | 実装 | 02 | FR-10, FR-02 AC1, NFR-13 |
+| AFIDE-12 | [外部変更 × 未保存バッファの選択 UI](./afide-12_save-conflict-ui.md)（**Reload / Keep Mine 完了。Compare は AFIDE-13 待ち**） | 実装 | 02（マージ可否は 13 に依存） | FR-07, NFR-06, NFR-12 |
 | AFIDE-13 | [Compare の実現方式決定（未確定-03 / 新規-D の解決）](./afide-13_compare-decision.md) | 調査 | 02 | FR-08, FR-07 AC1 |
 | AFIDE-14 | [外部エディタへの行番号受け渡し](./afide-14_external-editor-line-number.md) | 実装（打ち切り可） | 02 | FR-09, D-04 |
 
@@ -77,7 +77,11 @@ Phase 3（独立。Phase 0 完了後いつでも並行可）
 | **未確定-03** | Compare の実体、および**「Reload / Keep Mine の2択で先行リリースしてよいか」** | AFIDE-12 の**マージ可否**（実装着手はブロックしない） | AFIDE-13（調査 issue）で解決する |
 | ~~**未確定-11**~~ **解決済み** | upstream 追従の実施時期 → **upstream #10225 のクローズまで延期**（2026-08-17 決定）。`upstream/main` は `04ff18eea6` により macOS がビルド不能で、取り込むと NFR-10 の受け入れ条件2 を満たせない。リモート追加は完了済み。根拠は [AFIDE-02 基準線記録](./afide-02_基準線記録.md) | AFIDE-02 | AFIDE-02 で解決済み |
 
-> **AFIDE-01 の調査で新規-H 〜 新規-N の7件が追加で判明した**。一覧と扱いは [AFIDE-01 調査結果 §6](./afide-01_調査結果.md#6-この調査で新たに判明した未確定事項) を見ること。うち **新規-H（スクロール毎にエンジンを呼ぶと全文を再走査する。AFIDE-07 の設計に影響）は本人判断が要る**。
+> **AFIDE-01 の調査で新規-H 〜 新規-N の7件が追加で判明した**。一覧と扱いは [AFIDE-01 調査結果 §6](./afide-01_調査結果.md#6-この調査で新たに判明した未確定事項) を見ること。
+>
+> **解決済み**: 新規-H は AFIDE-07 で「テキスト世代が変わったときだけエンジンを1回呼び、結果をキャッシュしてスクロールは可視範囲の再描画だけにする」形に解決した。新規-B（属性変更が Undo に乗らないか）は成り立つことを実測で確認。新規-C は (i)（`NSTextStorageDelegate` で `editedRange`/`changeInLength` を受ける）を採用し、ルーラ自身が delegate になった。新規-K は CSS 忠実（`number` と `attribute` が同色）、新規-M は同梱エンジンに無い6言語を表から落とす、新規-F は既存どおり App セクション、でそれぞれ確定。
+>
+> **未解決**: 新規-I（dart 文法ファイルの置き場所。**そもそも未取得**）、新規-L（中間輝度テーマのコントラスト）、新規-N（FR-03 閾値の実値）、新規-D / 新規-E / 新規-G（AFIDE-13 / AFIDE-14 の範囲）。
 
 ## 実装中に判断してよい未確定事項
 
