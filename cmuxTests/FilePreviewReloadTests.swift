@@ -169,6 +169,34 @@ struct FilePreviewReloadTests {
         #expect(panel.isDirty)
     }
 
+    @Test("A vanished file drops the pending conflict")
+    func vanishedFileDropsConflict() async throws {
+        // The banner hides itself while the file is unavailable, but a conflict left
+        // pending would resurface the moment the path came back — offering to reload a
+        // version captured before the file vanished.
+        let fileURL = FileManager.default.temporaryDirectory
+            .appending(path: "cmux-file-preview-conflict-vanish-\(UUID().uuidString).txt")
+        defer { try? FileManager.default.removeItem(at: fileURL) }
+        try "on disk\n".write(to: fileURL, atomically: true, encoding: .utf8)
+
+        let panel = FilePreviewPanel(
+            workspaceId: UUID(),
+            filePath: fileURL.path,
+            startFileWatcher: false
+        )
+        defer { panel.close() }
+        await panel.loadTextContent().value
+        panel.updateTextContent("unsaved edits\n")
+        try "changed on disk\n".write(to: fileURL, atomically: true, encoding: .utf8)
+        await panel.reloadFromDisk().value
+        #expect(panel.saveConflict != nil)
+
+        try FileManager.default.removeItem(at: fileURL)
+        await panel.reloadFromDisk().value
+
+        #expect(panel.saveConflict == nil, "a conflict must not outlive the file it describes")
+    }
+
     @Test("Reloading from the conflict banner takes the disk version")
     func resolvingWithReloadTakesDiskVersion() async throws {
         let fileURL = FileManager.default.temporaryDirectory

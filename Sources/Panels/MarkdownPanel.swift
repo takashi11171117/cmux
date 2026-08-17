@@ -357,6 +357,9 @@ final class MarkdownPanel: Panel, ObservableObject, FilePreviewTextEditingPanel 
         case .loaded(let newContent, let encoding):
             applyLoadedContent(newContent, encoding: encoding, replacingDirtyContent: replacingDirtyContent)
         case .unavailable:
+            // Same reason as FilePreviewPanel: a pending conflict outliving the file would
+            // resurface when the path came back.
+            clearSaveConflict()
             guard replacingDirtyContent || !isDirty else {
                 isFileUnavailable = true
                 GlobalSearchCoordinator.shared.captureMarkdownPanel(self)

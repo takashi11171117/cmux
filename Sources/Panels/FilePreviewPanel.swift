@@ -1348,6 +1348,10 @@ final class FilePreviewPanel: Panel, ObservableObject, FilePreviewTextEditingPan
     ) {
         switch result {
         case .unavailable:
+            // The banner is hidden while the file is unavailable, but a *pending* conflict
+            // would survive and reappear if the file came back — offering to reload a
+            // version captured before it vanished.
+            clearSaveConflict()
             guard replacingDirtyContent || !isDirty else {
                 isFileUnavailable = true
                 return

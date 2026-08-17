@@ -6,6 +6,13 @@ extension MarkdownPanel: FilePreviewSaveConflictResolving {
         _ = loadTextContent(replacingDirtyContent: true)
     }
 
+    /// Drops any pending conflict, for when the file stops existing.
+    func clearSaveConflict() {
+        guard saveConflict != nil else { return }
+        saveConflictCoordinator.clear()
+        saveConflict = nil
+    }
+
     /// Applies the user's choice and clears the banner.
     ///
     /// - Parameter resolution: What the user picked.

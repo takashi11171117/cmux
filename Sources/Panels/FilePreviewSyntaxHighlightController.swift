@@ -118,7 +118,7 @@ final class FilePreviewSyntaxHighlightController {
         subscriptionTask = Task { [weak self] in
             for await _ in notifications {
                 guard let self else { break }
-                await self.applyVisibleRuns()
+                self.applyVisibleRunsNow()
             }
         }
     }
@@ -184,11 +184,17 @@ final class FilePreviewSyntaxHighlightController {
         generation += 1
         guard isEnabled, case .highlight = decision else { return }
 
+        // Both are cancelled: a tokenization started by invalidateAll() is now describing
+        // superseded text, and leaving it running would walk the whole document a second
+        // time for a result the generation check throws away.
         debounceTask?.cancel()
+        highlightTask?.cancel()
+
         let scheduled = generation
+        let quietPeriod = debounce
         debounceTask = Task { [weak self] in
-            if self?.debounce != .zero {
-                try? await Task.sleep(for: self?.debounce ?? .zero)
+            if quietPeriod != .zero {
+                try? await Task.sleep(for: quietPeriod)
             }
             guard !Task.isCancelled, let self else { return }
             await self.tokenize(for: scheduled)
@@ -252,11 +258,7 @@ final class FilePreviewSyntaxHighlightController {
         applyVisibleRunsNow()
     }
 
-    /// Applies cached runs for the current viewport, hopping to the main actor.
-    private func applyVisibleRuns() async {
-        applyVisibleRunsNow()
-    }
-
+    /// Applies cached runs for the current viewport.
     private func applyVisibleRunsNow() {
         guard isEnabled, cachedGeneration == generation, !cachedRuns.isEmpty else { return }
         guard let textView, let storage = textView.textStorage else { return }

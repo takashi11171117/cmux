@@ -35,11 +35,14 @@ struct FilePreviewSaveConflictBanner: View {
             }
             .controlSize(.small)
 
+            // Deliberately not `.keyboardShortcut(.defaultAction)`. Reload discards the
+            // user's unsaved edits, and making it the default action means a Return pressed
+            // while the banner is up could throw away work the banner exists to protect.
+            // Destroying edits should always cost a deliberate click.
             Button(String(localized: "filePreview.saveConflict.reload", defaultValue: "Reload")) {
                 onResolve(.reload)
             }
             .controlSize(.small)
-            .keyboardShortcut(.defaultAction)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 7)
