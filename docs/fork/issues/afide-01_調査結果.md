@@ -70,6 +70,8 @@ FR-02 が要求する13言語の充足状況 `[実測]`:
 
 **dart 以外の12言語は充足。dart のみ欠落**（§3.7 で解消手段を実測）。
 
+> **2026-08-17 追記**: §3.7 の手段を実施し、`dart.min.js`（2,216 バイト）を `Resources/markdown-viewer/` に vendoring した。**FR-02 の13言語はすべて色が付く**。本節は調査時点の記録としてそのまま残す。
+
 参考: 設計書 §7.2 が複製元とする iOS 側の表 `[実コード: Packages/iOS/CmuxAgentChatUI/Sources/CmuxAgentChatUI/Artifacts/ChatArtifactSyntaxHighlightPolicy.swift:8-64]` が使う言語ID 34種のうち、同梱ビルドに無いのは **clojure / dart / elixir / fsharp / gradle / groovy / scala** の7種 `[実測]`。`html` は `xml` のエイリアスとして解決される `[実測]`。FR-02 の要求外なので必須ではないが、表をそのまま複製すると7種が無反応になる。
 
 ### 3.2 `__emitter` でトークン範囲を直接取得できる（HTML パース不要）
