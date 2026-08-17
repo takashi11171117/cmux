@@ -56680,6 +56680,74 @@
         }
       }
     },
+    "codeReview.closeFile": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close File"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルを閉じる"
+          }
+        }
+      }
+    },
+    "codeReview.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No file open"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルが開かれていません"
+          }
+        }
+      }
+    },
+    "codeReview.hideColumn": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hide Code Review"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u30b3\u30fc\u30c9\u30ec\u30d3\u30e5\u30fc\u3092\u96a0\u3059"
+          }
+        }
+      }
+    },
+    "codeReview.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Code Review"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u30b3\u30fc\u30c9\u30ec\u30d3\u30e5\u30fc"
+          }
+        }
+      }
+    },
     "command.addWorkspaceChecklistItem.title": {
       "extractionState": "manual",
       "localizations": {
@@ -71073,6 +71141,23 @@
         }
       }
     },
+    "command.toggleCodeReview.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toggle Code Review"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コードレビューを切り替え"
+          }
+        }
+      }
+    },
     "command.toggleFullScreen.subtitle": {
       "extractionState": "manual",
       "localizations": {
@@ -71442,6 +71527,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "切換左側邊欄"
+          }
+        }
+      }
+    },
+    "command.toggleRightSidebar.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toggle Right Sidebar"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右サイドバーを切り替え"
           }
         }
       }
@@ -118006,6 +118108,244 @@
           "stringUnit": {
             "state": "translated",
             "value": "Finderで表示"
+          }
+        }
+      }
+    },
+    "fileExplorer.confirm.moveToTrash": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move \u201c%@\u201d to the Trash?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u300c%@\u300d\u3092\u3054\u307f\u7bb1\u306b\u5165\u308c\u307e\u3059\u304b\uff1f"
+          }
+        }
+      }
+    },
+    "fileExplorer.contextMenu.copyFileName": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy File Name"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u30d5\u30a1\u30a4\u30eb\u540d\u3092\u30b3\u30d4\u30fc"
+          }
+        }
+      }
+    },
+    "fileExplorer.contextMenu.duplicate": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duplicate"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u8907\u88fd"
+          }
+        }
+      }
+    },
+    "fileExplorer.contextMenu.moveToTrash": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move to Trash"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u3054\u307f\u7bb1\u306b\u5165\u308c\u308b"
+          }
+        }
+      }
+    },
+    "fileExplorer.contextMenu.newFile": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New File\u2026"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u65b0\u898f\u30d5\u30a1\u30a4\u30eb\u2026"
+          }
+        }
+      }
+    },
+    "fileExplorer.contextMenu.newFolder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Folder\u2026"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u65b0\u898f\u30d5\u30a9\u30eb\u30c0\u2026"
+          }
+        }
+      }
+    },
+    "fileExplorer.contextMenu.openInCodeReview": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open in Code Review"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u30b3\u30fc\u30c9\u30ec\u30d3\u30e5\u30fc\u3067\u958b\u304f"
+          }
+        }
+      }
+    },
+    "fileExplorer.contextMenu.openTerminalHere": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Terminal Here"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u3053\u3053\u3067\u65b0\u898f\u30bf\u30fc\u30df\u30ca\u30eb"
+          }
+        }
+      }
+    },
+    "fileExplorer.contextMenu.rename": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rename\u2026"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u540d\u524d\u3092\u5909\u66f4\u2026"
+          }
+        }
+      }
+    },
+    "fileExplorer.error.alreadyExists": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u201c%@\u201d already exists."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u300c%@\u300d\u306f\u3059\u3067\u306b\u5b58\u5728\u3057\u307e\u3059\u3002"
+          }
+        }
+      }
+    },
+    "fileExplorer.error.createFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not create \u201c%@\u201d."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u300c%@\u300d\u3092\u4f5c\u6210\u3067\u304d\u307e\u305b\u3093\u3067\u3057\u305f\u3002"
+          }
+        }
+      }
+    },
+    "fileExplorer.prompt.newFile": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New File"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u65b0\u898f\u30d5\u30a1\u30a4\u30eb"
+          }
+        }
+      }
+    },
+    "fileExplorer.prompt.newFolder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Folder"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u65b0\u898f\u30d5\u30a9\u30eb\u30c0"
+          }
+        }
+      }
+    },
+    "fileExplorer.prompt.rename": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rename"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u540d\u524d\u3092\u5909\u66f4"
           }
         }
       }
@@ -247200,6 +247540,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "分割窗格"
+          }
+        }
+      }
+    },
+    "toolbar.rightSidebar.label": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Right Sidebar"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右サイドバー"
+          }
+        }
+      }
+    },
+    "toolbar.rightSidebar.tooltip": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toggle Right Sidebar (⌘⌥B)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右サイドバーを切り替え (⌘⌥B)"
           }
         }
       }

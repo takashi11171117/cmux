@@ -7,6 +7,7 @@ import SwiftUI
 final class WindowToolbarController: NSObject, NSToolbarDelegate {
     private let commandItemIdentifier = NSToolbarItem.Identifier("cmux.focusedCommand")
     private let layoutModeItemIdentifier = NSToolbarItem.Identifier("cmux.layoutMode")
+    private let rightSidebarItemIdentifier = NSToolbarItem.Identifier("cmux.rightSidebar")
 
     private weak var tabManager: TabManager?
 
@@ -220,11 +221,13 @@ final class WindowToolbarController: NSObject, NSToolbarDelegate {
     // MARK: - NSToolbarDelegate
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [layoutModeItemIdentifier, commandItemIdentifier, .flexibleSpace]
+        [layoutModeItemIdentifier, commandItemIdentifier, rightSidebarItemIdentifier, .flexibleSpace]
     }
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [layoutModeItemIdentifier, commandItemIdentifier, .flexibleSpace]
+        // The right sidebar sits after the flexible space so it lands on the trailing edge,
+        // next to the sidebar it toggles.
+        [layoutModeItemIdentifier, commandItemIdentifier, .flexibleSpace, rightSidebarItemIdentifier]
     }
 
     func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier, willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
@@ -274,7 +277,46 @@ final class WindowToolbarController: NSObject, NSToolbarDelegate {
             return item
         }
 
+        if itemIdentifier == rightSidebarItemIdentifier {
+            let item = NSToolbarItem(itemIdentifier: itemIdentifier)
+            let button = NSButton(
+                image: NSImage(
+                    systemSymbolName: "sidebar.right",
+                    accessibilityDescription: String(
+                        localized: "menu.view.toggleRightSidebar", defaultValue: "Toggle Right Sidebar"
+                    )
+                ) ?? NSImage(),
+                target: self,
+                action: #selector(toggleRightSidebarFromToolbar(_:))
+            )
+            button.bezelStyle = .texturedRounded
+            button.controlSize = .small
+            item.view = button
+            item.label = String(
+                localized: "toolbar.rightSidebar.label", defaultValue: "Right Sidebar"
+            )
+            // The shortcut is discoverable here rather than only in the View menu, which is
+            // the point of adding the button at all.
+            item.toolTip = String(
+                localized: "toolbar.rightSidebar.tooltip",
+                defaultValue: "Toggle Right Sidebar (⌘⌥B)"
+            )
+            return item
+        }
+
         return nil
+    }
+
+    /// Toggles the right sidebar for whichever main window is key.
+    ///
+    /// Routes through the same `AppDelegate` entry point the menu item and the keyboard
+    /// shortcut use, so the three stay in step rather than each reaching into window state.
+    @objc private func toggleRightSidebarFromToolbar(_ sender: NSButton) {
+        if AppDelegate.shared?.toggleRightSidebarInActiveMainWindow(
+            preferredWindow: sender.window ?? NSApp.keyWindow ?? NSApp.mainWindow
+        ) != true {
+            NSSound.beep()
+        }
     }
 
     // MARK: - Layout mode toggle

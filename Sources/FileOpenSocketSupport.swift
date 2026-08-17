@@ -133,12 +133,53 @@ extension TerminalController {
                 return
             }
 
-            let openedPanels = ws.openFileSurfaces(
-                inPane: paneId,
-                filePaths: filePaths,
-                focus: shouldFocus,
-                reuseExisting: filePaths.count == 1 && !hasExplicitPaneDestination
-            )
+            // Without an explicit destination, open beside the caller rather than on top of
+            // it. `cmux open` is typically run from the terminal the user is watching, and
+            // adding a tab to that same pane hides the very session that asked for the file.
+            // The file explorer and terminal Cmd-click already route through
+            // `openOrFocusFilePreviewSplit`, which reuses a right-hand pane or splits one
+            // into being; sharing that path is what keeps the three entry points agreeing.
+            // A single file with no explicit destination goes to the dedicated code-review
+            // column. That column is a sibling of the terminal area rather than a pane inside
+            // it, so reading a file never moves or shrinks the session that asked for it, and
+            // opening a second file adds a tab there instead of splitting again.
+            if !hasExplicitPaneDestination,
+               filePaths.count == 1,
+               AppDelegate.shared?.showFileInCodeReviewColumn(filePath: filePaths[0]) == true {
+                let windowId = v2ResolveWindowId(tabManager: tabManager)
+                result = .ok([
+                    "window_id": v2OrNull(windowId?.uuidString),
+                    "window_ref": v2Ref(kind: .window, uuid: windowId),
+                    "workspace_id": ws.id.uuidString,
+                    "workspace_ref": v2Ref(kind: .workspace, uuid: ws.id),
+                    // No surface or pane: the column is not part of the workspace split tree.
+                    "pane_id": NSNull(),
+                    "pane_ref": NSNull(),
+                    "surface_id": NSNull(),
+                    "surface_ref": NSNull(),
+                    "panel_type": NSNull(),
+                    "path": filePaths[0],
+                    "paths": filePaths,
+                    "surfaces": [],
+                    "opened_in": "code_review_column"
+                ])
+                return
+            }
+
+            let openedPanels: [any Panel]
+            if !hasExplicitPaneDestination,
+               filePaths.count == 1,
+               let sourcePanelId = ws.focusedPanelId,
+               let opened = ws.openFileBesideSource(from: sourcePanelId, filePath: filePaths[0]) {
+                openedPanels = [opened]
+            } else {
+                openedPanels = ws.openFileSurfaces(
+                    inPane: paneId,
+                    filePaths: filePaths,
+                    focus: shouldFocus,
+                    reuseExisting: filePaths.count == 1 && !hasExplicitPaneDestination
+                )
+            }
             guard !openedPanels.isEmpty else {
                 result = .err(code: "internal_error", message: "Failed to open file", data: nil)
                 return

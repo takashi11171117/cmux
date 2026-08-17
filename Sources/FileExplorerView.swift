@@ -563,6 +563,18 @@ struct FileExplorerPanelView: NSViewRepresentable {
 
             let isLocal = store.provider is LocalFileExplorerProvider
 
+            if !node.isDirectory {
+                menu.addFileExplorerItem(
+                    title: String(
+                        localized: "fileExplorer.contextMenu.openInCodeReview",
+                        defaultValue: "Open in Code Review"
+                    ),
+                    action: #selector(contextMenuOpenInCodeReview(_:)),
+                    target: self,
+                    node: node
+                )
+            }
+
             if !node.isDirectory && isLocal {
                 FileExplorerExternalOpenMenuItems(
                     fileURL: URL(fileURLWithPath: node.path),
@@ -572,6 +584,16 @@ struct FileExplorerPanelView: NSViewRepresentable {
             }
 
             if isLocal {
+                menu.addFileExplorerItem(
+                    title: String(
+                        localized: "fileExplorer.contextMenu.openTerminalHere",
+                        defaultValue: "New Terminal Here"
+                    ),
+                    action: #selector(contextMenuOpenTerminalHere(_:)),
+                    target: self,
+                    node: node
+                )
+
                 let revealItem = NSMenuItem(
                     title: FileExternalOpenText.revealInFinder,
                     action: #selector(contextMenuRevealInFinder(_:)),
@@ -603,6 +625,55 @@ struct FileExplorerPanelView: NSViewRepresentable {
             copyRelItem.target = self
             copyRelItem.representedObject = node
             menu.addItem(copyRelItem)
+
+            menu.addFileExplorerItem(
+                title: String(
+                    localized: "fileExplorer.contextMenu.copyFileName",
+                    defaultValue: "Copy File Name"
+                ),
+                action: #selector(contextMenuCopyFileName(_:)),
+                target: self,
+                node: node
+            )
+
+            // Writing actions last, behind a separator: nothing above this line changes the
+            // user's files, so a mis-aimed click lands on something harmless.
+            guard isLocal else { return }
+            menu.addItem(.separator())
+
+            menu.addFileExplorerItem(
+                title: String(localized: "fileExplorer.contextMenu.newFile", defaultValue: "New File…"),
+                action: #selector(contextMenuNewFile(_:)),
+                target: self,
+                node: node
+            )
+            menu.addFileExplorerItem(
+                title: String(localized: "fileExplorer.contextMenu.newFolder", defaultValue: "New Folder…"),
+                action: #selector(contextMenuNewFolder(_:)),
+                target: self,
+                node: node
+            )
+            menu.addFileExplorerItem(
+                title: String(localized: "fileExplorer.contextMenu.rename", defaultValue: "Rename…"),
+                action: #selector(contextMenuRename(_:)),
+                target: self,
+                node: node
+            )
+            menu.addFileExplorerItem(
+                title: String(localized: "fileExplorer.contextMenu.duplicate", defaultValue: "Duplicate"),
+                action: #selector(contextMenuDuplicate(_:)),
+                target: self,
+                node: node
+            )
+            menu.addFileExplorerItem(
+                title: String(
+                    localized: "fileExplorer.contextMenu.moveToTrash",
+                    defaultValue: "Move to Trash"
+                ),
+                action: #selector(contextMenuMoveToTrash(_:)),
+                target: self,
+                node: node
+            )
         }
 
         @objc private func contextMenuOpenExternally(_ sender: NSMenuItem) {

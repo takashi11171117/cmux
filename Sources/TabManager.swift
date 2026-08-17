@@ -1248,6 +1248,11 @@ class TabManager: ObservableObject {
                 defaultTitle = String(localized: "browser.newTab", defaultValue: "New tab")
             case .cloudVMLoading:
                 defaultTitle = String(localized: "workspace.cloudVM.defaultTitle", defaultValue: "Cloud VM")
+            case .empty:
+                // Only the code-review column creates these, and it owns its workspace
+                // directly rather than going through the tab manager. Titled anyway so a
+                // future caller does not land on an empty string.
+                defaultTitle = String(localized: "codeReview.title", defaultValue: "Code Review")
             }
             let newWorkspace = makeWorkspaceForCreation(
                 id: id,

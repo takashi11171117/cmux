@@ -830,6 +830,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     /// observes inside the sidebar.
     var settingsRuntime: SettingsRuntime?
     weak var fileExplorerState: FileExplorerState?
+    /// Code-review column of the active window, registered by `ContentView`.
+    ///
+    /// Weak and app-level for the same reason as ``fileExplorerState``: the socket, the menu,
+    /// and the toolbar all need to reach the active window's column without owning it.
+    weak var codeReviewPanelState: CodeReviewPanelState?
     weak var fullscreenControlsViewModel: TitlebarControlsViewModel?
     weak var sidebarSelectionState: SidebarSelectionState?
     var shortcutLayoutCharacterProvider: (UInt16, NSEvent.ModifierFlags) -> String? = KeyboardLayout.character(forKeyCode:modifierFlags:)
@@ -6959,6 +6964,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         return false
     }
 
+    /// Shows `filePath` in the active window's code-review column.
+    ///
+    /// The single entry point for putting a file in that column, so the socket, the file
+    /// explorer, and Cmd-click cannot drift apart.
+    ///
+    /// - Parameter filePath: File to display.
+    /// - Returns: `true` when a column was available to receive it.
+    @discardableResult
+    @MainActor
+    func showFileInCodeReviewColumn(filePath: String) -> Bool {
+        guard let codeReviewPanelState else { return false }
+        codeReviewPanelState.show(filePath: filePath)
+        return true
+    }
+
+    /// Toggles the code-review column in the active window.
+    ///
+    /// - Returns: `true` when a column was available to toggle.
+    @discardableResult
+    @MainActor
+    func toggleCodeReviewColumn() -> Bool {
+        guard let codeReviewPanelState else { return false }
+        codeReviewPanelState.toggle()
+        return true
+    }
+
     @discardableResult
     func toggleRightSidebarInActiveMainWindow(preferredWindow: NSWindow? = nil) -> Bool {
         guard let context = preferredRegisteredMainWindowContext(preferredWindow: preferredWindow) else {
@@ -7850,6 +7881,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                     if focusInitialBrowserAddressBarOnCreate {
                         focusInitialBrowserAddressBar(in: workspace)
                     }
+                case .empty:
+                    // Not reachable: an empty workspace is never the surface a *window* boots
+                    // with. Only the code-review column asks for one, and it owns its own.
+                    break
                 case .cloudVMLoading:
                     let workspace = context.tabManager.addWorkspace(initialSurface: .cloudVMLoading)
                     closeInitialWorkspaceIfNeeded(
@@ -16499,6 +16534,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 )
                 if workspace != nil { onExecuted?() }
                 return workspace != nil
+            case .toggleCodeReview:
+                let toggled = toggleCodeReviewColumn()
+                if toggled { onExecuted?() }
+                return toggled
+            case .toggleRightSidebar:
+                let toggled = toggleRightSidebarInActiveMainWindow(
+                    preferredWindow: resolvedWindow(for: context) ?? preferredWindow
+                )
+                if toggled { onExecuted?() }
+                return toggled
             case .newSimulator: return performConfiguredNewSimulatorAction(context: context, onExecuted: onExecuted)
             case .newTerminal:
                 context.tabManager.newSurface()

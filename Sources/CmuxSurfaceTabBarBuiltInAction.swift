@@ -11,6 +11,8 @@ enum CmuxSurfaceTabBarBuiltInAction: String, Codable, Sendable, CaseIterable, Ha
     case newSimulator = "cmux.newSimulator"
     case splitRight = "cmux.splitRight"
     case splitDown = "cmux.splitDown"
+    case toggleCodeReview = "cmux.toggleCodeReview"
+    case toggleRightSidebar = "cmux.toggleRightSidebar"
 
     init?(configID: String) {
         switch configID {
@@ -33,6 +35,10 @@ enum CmuxSurfaceTabBarBuiltInAction: String, Codable, Sendable, CaseIterable, Ha
             self = .newSimulator
         case "cmux.splitRight", "splitRight":
             self = .splitRight
+        case "cmux.toggleCodeReview", "toggleCodeReview", "codeReview", "code-review":
+            self = .toggleCodeReview
+        case "cmux.toggleRightSidebar", "toggleRightSidebar", "rightSidebar", "right-sidebar":
+            self = .toggleRightSidebar
         case "cmux.splitDown", "splitDown":
             self = .splitDown
         default:
@@ -63,6 +69,16 @@ enum CmuxSurfaceTabBarBuiltInAction: String, Codable, Sendable, CaseIterable, Ha
             return (String(localized: "command.newBrowserTab.title", defaultValue: "New Browser Tab"), ["new", "browser", "tab", "surface"])
         case .newSimulator:
             return (String(localized: "command.newSimulatorPane.title", defaultValue: "New Simulator Pane"), ["new", "simulator", "iphone", "ipad", "ios", "surface"])
+        case .toggleCodeReview:
+            return (
+                String(localized: "command.toggleCodeReview.title", defaultValue: "Toggle Code Review"),
+                ["code", "review", "editor", "file", "preview", "column", "panel", "toggle"]
+            )
+        case .toggleRightSidebar:
+            return (
+                String(localized: "command.toggleRightSidebar.title", defaultValue: "Toggle Right Sidebar"),
+                ["right", "sidebar", "files", "tree", "explorer", "sessions", "toggle"]
+            )
         case .splitRight:
             return (String(localized: "command.terminalSplitRight.title", defaultValue: "Split Right"), ["terminal", "split", "right"])
         case .splitDown:
@@ -90,12 +106,19 @@ enum CmuxSurfaceTabBarBuiltInAction: String, Codable, Sendable, CaseIterable, Ha
             return "square.split.2x1"
         case .splitDown:
             return "square.split.1x2"
+        case .toggleCodeReview:
+            return "chevron.left.forwardslash.chevron.right"
+        case .toggleRightSidebar:
+            return "sidebar.right"
         }
     }
 
     var bonsplitAction: BonsplitConfiguration.SplitActionButton.Action? {
         switch self {
-        case .newWorkspace, .newAgentChat, .cloudVM, .mobileConnect, .newSimulator:
+        case .newWorkspace, .newAgentChat, .cloudVM, .mobileConnect, .newSimulator,
+             .toggleCodeReview, .toggleRightSidebar:
+            // Handled by cmux rather than Bonsplit: these toggle window chrome that lives
+            // outside the split tree, so there is no Bonsplit action to map onto.
             return nil
         case .newTerminal:
             return .newTerminal

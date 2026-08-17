@@ -20,6 +20,15 @@ enum CommandClickFileOpenRouter {
         defaults: UserDefaults = .standard
     ) -> Bool {
         let store = FileRouteSettingsStore(defaults: defaults)
+
+        // Same destination as the socket and the sidebar. Markdown keeps its rendered
+        // viewer; only plain-text files belong in the code-review column.
+        if !store.shouldRouteMarkdown(path: filePath),
+           store.shouldRouteSupportedFile(path: filePath),
+           AppDelegate.shared?.showFileInCodeReviewColumn(filePath: filePath) == true {
+            return true
+        }
+
         if store.shouldRouteMarkdown(path: filePath),
            workspace.openOrFocusMarkdownSplit(from: sourcePanelId, filePath: filePath) != nil {
             return true

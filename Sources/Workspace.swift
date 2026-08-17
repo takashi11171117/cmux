@@ -3347,7 +3347,7 @@ final class Workspace: Identifiable, ObservableObject, FilePreviewTabMetadataHos
                 bindSurface(tabId, toPanelId: loadingPanel.id)
                 initialTabId = tabId
             }
-        } else {
+        } else if initialSurface != .empty {
             // Create initial terminal panel
             let terminalPanel = TerminalPanel(
                 workspaceId: self.id,
@@ -13246,7 +13246,14 @@ extension Workspace: BonsplitDelegate {
                 )
             case .newSimulator:
                 _ = newSimulatorSurface(inPane: pane, focus: true)
+            case .toggleCodeReview:
+                _ = AppDelegate.shared?.toggleCodeReviewColumn()
+            case .toggleRightSidebar:
+                _ = AppDelegate.shared?.toggleRightSidebarInActiveMainWindow(
+                    preferredWindow: presentingWindow
+                )
             case .newTerminal, .newBrowser, .splitRight, .splitDown:
+                // Bonsplit performs these itself; nothing to do on the cmux side.
                 break
             }
             return

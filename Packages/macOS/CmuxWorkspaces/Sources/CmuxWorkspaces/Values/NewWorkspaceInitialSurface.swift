@@ -11,4 +11,10 @@ public enum NewWorkspaceInitialSurface: Sendable {
     case browser
     /// A transient Cloud VM loading surface. It is swapped for a terminal once attach is ready.
     case cloudVMLoading
+    /// No initial surface: the workspace boots with one empty pane and nothing in it.
+    ///
+    /// For workspaces whose first surface is decided by the caller rather than the type of
+    /// workspace — the code-review column opens whichever file the user picked, so booting a
+    /// terminal it would immediately have to close is wrong.
+    case empty
 }

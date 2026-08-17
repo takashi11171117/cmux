@@ -938,6 +938,8 @@ struct CmuxSurfaceTabBarButton: Codable, Sendable, Hashable, Identifiable {
     static let newSimulator = actionReference(CmuxSurfaceTabBarBuiltInAction.newSimulator.configID)
     static let splitRight = actionReference(CmuxSurfaceTabBarBuiltInAction.splitRight.configID)
     static let splitDown = actionReference(CmuxSurfaceTabBarBuiltInAction.splitDown.configID)
+    static let toggleCodeReview = actionReference(CmuxSurfaceTabBarBuiltInAction.toggleCodeReview.configID)
+    static let toggleRightSidebar = actionReference(CmuxSurfaceTabBarBuiltInAction.toggleRightSidebar.configID)
 
     static let mobileConnect = actionReference(CmuxSurfaceTabBarBuiltInAction.mobileConnect.configID)
 
@@ -945,7 +947,12 @@ struct CmuxSurfaceTabBarButton: Codable, Sendable, Hashable, Identifiable {
         .newTerminal,
         .newBrowser,
         .splitRight,
-        .splitDown
+        .splitDown,
+        // Both toggle chrome that sits outside the split tree. They live here rather than
+        // only in the View menu because a toggle you have to remember a shortcut for is a
+        // toggle nobody uses.
+        .toggleCodeReview,
+        .toggleRightSidebar
     ]
 
     static func builtIn(

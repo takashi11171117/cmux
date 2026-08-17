@@ -929,6 +929,9 @@ struct ContentView: View {
     @State private var backgroundWorkspacePrimeCoordinator = BackgroundWorkspacePrimeCoordinator()
     @State private var workspacePresentationModeRuntimeCache = WorkspacePresentationModeRuntimeCache()
     @State private var fileExplorerWidth: CGFloat = 220
+    /// Dedicated code-review column, between the terminal area and the right sidebar.
+    @StateObject private var codeReviewState = CodeReviewPanelState()
+    @State private var codeReviewDragStartWidth: CGFloat?
     @State private var fileExplorerDragStartWidth: CGFloat?
     @State private var previousSelectedWorkspaceId: UUID?
     @State private var retiringWorkspaceId: UUID?
@@ -1256,6 +1259,7 @@ struct ContentView: View {
     private enum SidebarResizerHandle: Hashable {
         case divider
         case explorerDivider
+        case codeReviewDivider
     }
 
     /// Returns the current drag width, start width capture, width update, and drag end cleanup for a resizer handle.
@@ -1282,6 +1286,22 @@ struct ContentView: View {
                     }
                 },
                 finishDrag: { sidebarDragStartWidth = nil }
+            )
+        case .codeReviewDivider:
+            return (
+                currentWidth: codeReviewState.width,
+                captureStart: { codeReviewDragStartWidth = codeReviewState.width },
+                updateWidth: { translation in
+                    let startWidth = codeReviewDragStartWidth ?? codeReviewState.width
+                    let nextWidth = CodeReviewPanelState.clampedWidth(
+                        startWidth - translation,
+                        availableWidth: availableWidth
+                    )
+                    withTransaction(Transaction(animation: nil)) {
+                        codeReviewState.width = nextWidth
+                    }
+                },
+                finishDrag: { codeReviewDragStartWidth = nil }
             )
         case .explorerDivider:
             return (
@@ -1917,7 +1937,37 @@ struct ContentView: View {
         // heavy mode content until the sidebar has been shown at least once.
         return HStack(spacing: 0) {
             terminalContentWithSidebarDropOverlay(appearance: appearance)
+            codeReviewColumn(appearance: appearance)
             rightSidebarPanelWithBackdrop(appearance: appearance)
+        }
+        // Registered from the container, not from inside `codeReviewColumn`: that view is
+        // `@ViewBuilder`-conditional, so while the column is hidden it produces nothing and
+        // an `onAppear` there would never run — leaving the socket unable to find it.
+        .onAppear { AppDelegate.shared?.codeReviewPanelState = codeReviewState }
+    }
+
+    /// The code-review column, or nothing when it is hidden.
+    ///
+    /// A sibling of the terminal area rather than a pane inside it: splitting a pane would
+    /// move and shrink the very terminal the user is reading, and every additional file
+    /// would split again.
+    @ViewBuilder
+    private func codeReviewColumn(appearance: WindowAppearanceSnapshot) -> some View {
+        if codeReviewState.isVisible {
+            CodeReviewPanelView(
+                state: codeReviewState,
+                windowAppearance: appearance,
+                isFullScreen: isFullScreen,
+                isVisibleInUI: true
+            )
+            .frame(width: codeReviewState.width)
+            .overlay(alignment: .leading) {
+                WindowChromeBorder(
+                    orientation: .vertical,
+                    refreshNotificationName: .ghosttyDefaultBackgroundDidChange,
+                    backgroundColorProvider: { GhosttyBackgroundTheme.currentColor() }
+                )
+            }
         }
     }
 
@@ -2427,6 +2477,17 @@ struct ContentView: View {
         }
 
         sidebarSelectionState.selection = .tabs
+
+        // Local files go to the code-review column, the same destination the socket uses.
+        // Routing each entry point separately is what produced the original split: files
+        // opened from here landed as tabs in the terminal's pane while `cmux open` did not.
+        // Remote workspaces still take the pane path below, because the file has to be
+        // materialized locally first and that work is already expressed there.
+        if !workspace.isRemoteWorkspace,
+           AppDelegate.shared?.showFileInCodeReviewColumn(filePath: filePath) == true {
+            return
+        }
+
         if workspace.isRemoteWorkspace {
             Task { [weak workspace, fileExplorerStore] in
                 guard let workspace else { return }
