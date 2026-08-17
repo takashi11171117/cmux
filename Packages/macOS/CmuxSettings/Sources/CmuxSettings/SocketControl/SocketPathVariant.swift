@@ -12,6 +12,13 @@ public enum SocketPathVariant: Equatable, Sendable {
     case staging(slug: String?)
     /// A local debug/dev build, optionally tag-scoped by `slug`.
     case dev(slug: String?)
+    /// A downstream fork shipped as its own app.
+    ///
+    /// Without this a fork's bundle identifier falls through to ``stable`` and it shares the
+    /// socket, and the marker recording it, with upstream cmux. Whichever launched last wins
+    /// the socket, so `cmux send` reaches an app the caller did not choose — the exact failure
+    /// an agent driving panes cannot detect.
+    case fork(slug: String?)
 
     /// The marker file name (within ``CmuxStateDirectory``) that records this
     /// variant's last socket path.
@@ -34,6 +41,11 @@ public enum SocketPathVariant: Equatable, Sendable {
                 return "dev-\(slug)-last-socket-path"
             }
             return "dev-last-socket-path"
+        case .fork(let slug):
+            if let slug = Self.sanitizedSlug(slug) {
+                return "fork-\(slug)-last-socket-path"
+            }
+            return "fork-last-socket-path"
         }
     }
 
@@ -57,6 +69,11 @@ public enum SocketPathVariant: Equatable, Sendable {
                 return "/tmp/cmux-dev-\(slug)-last-socket-path"
             }
             return "/tmp/cmux-dev-last-socket-path"
+        case .fork(let slug):
+            if let slug = Self.sanitizedSlug(slug) {
+                return "/tmp/cmux-fork-\(slug)-last-socket-path"
+            }
+            return "/tmp/cmux-fork-last-socket-path"
         }
     }
 

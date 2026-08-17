@@ -8,6 +8,14 @@ public enum SocketPathMarkerFiles {
     public static let nightlyBundleIdentifier = "com.cmuxterm.app.nightly"
     public static let stagingBundleIdentifier = "com.cmuxterm.app.staging"
     public static let defaultBaseDebugBundleIdentifier = "com.cmuxterm.app.debug"
+
+    /// Bundle-identifier stems belonging to forks that ship as their own app.
+    ///
+    /// Each entry claims itself and anything beneath it, so `com.cmuxterm.app.afide` and
+    /// `com.cmuxterm.app.afide.<tag>` both resolve to ``SocketPathVariant/fork(slug:)``.
+    public static let forkBundleIdentifierPrefixes = [
+        "com.cmuxterm.app.afide"
+    ]
     public static let defaultDebugSocketPath = "/tmp/cmux-debug.sock"
     public static let defaultNightlySocketPath = "/tmp/cmux-nightly.sock"
     public static let defaultStagingSocketPath = "/tmp/cmux-staging.sock"
@@ -71,6 +79,13 @@ public enum SocketPathMarkerFiles {
         if bundleId.hasPrefix("\(baseDebugBundleIdentifier).") {
             return .dev(slug: bundleSuffixSlug(bundleId, prefix: "\(baseDebugBundleIdentifier)."))
         }
+        // A fork shipped as its own app. Matched before the `.stable` fallback: without this
+        // its identifier lands on `.stable` and it shares upstream cmux's socket, so the two
+        // fight over it and `cmux` reaches whichever launched last.
+        for prefix in forkBundleIdentifierPrefixes where bundleId.hasPrefix(prefix) {
+            let suffix = String(bundleId.dropFirst(prefix.count))
+            return .fork(slug: suffix.isEmpty ? nil : sanitizeSocketSlug(suffix))
+        }
         return .stable
     }
 
@@ -106,6 +121,8 @@ public enum SocketPathMarkerFiles {
                 return "/tmp/cmux-debug-\(slug).sock"
             }
             return debugSocketPath
+        case .fork(let slug):
+            return "/tmp/cmux-fork-\(slug ?? "default").sock"
         }
     }
 
