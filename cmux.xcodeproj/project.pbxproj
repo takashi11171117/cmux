@@ -1098,6 +1098,8 @@ C0DE71B10000000000000001 /* AppDelegate+AgentChatNotifications.swift in Sources 
 		FE001104 /* FileExplorerTerminalPathInsertion.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE001004 /* FileExplorerTerminalPathInsertion.swift */; };
 		FE001102 /* FileExplorerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE001002 /* FileExplorerView.swift */; };
 		A5001441A5001441A5001441 /* FileOpenSocketSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001440A5001440A5001440 /* FileOpenSocketSupport.swift */; };
+		AF1DE0500000000000003001 /* FilePreviewExternalOpenLocation.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF1DE0500000000000003002 /* FilePreviewExternalOpenLocation.swift */; };
+		AF1DE0500000000000003101 /* FilePreviewExternalOpenLocationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF1DE0500000000000003102 /* FilePreviewExternalOpenLocationTests.swift */; };
 		C0DE8652000000000000000F /* FilePreviewFileState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE86520000000000000010 /* FilePreviewFileState.swift */; };
 		A5001432A5001432A5001432 /* FilePreviewFocusCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001431A5001431A5001431 /* FilePreviewFocusCoordinator.swift */; };
 		AF1DE0500000000000000501 /* FilePreviewHighlightDecision.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF1DE0500000000000000502 /* FilePreviewHighlightDecision.swift */; };
@@ -3910,6 +3912,8 @@ C0DE71B10000000000000002 /* AppDelegate+AgentChatNotifications.swift */ = {isa =
 		FE001004 /* FileExplorerTerminalPathInsertion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileExplorerTerminalPathInsertion.swift; sourceTree = "<group>"; };
 		FE001002 /* FileExplorerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileExplorerView.swift; sourceTree = "<group>"; };
 		A5001440A5001440A5001440 /* FileOpenSocketSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileOpenSocketSupport.swift; sourceTree = "<group>"; };
+		AF1DE0500000000000003002 /* FilePreviewExternalOpenLocation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels/FilePreviewExternalOpenLocation.swift; sourceTree = "<group>"; };
+		AF1DE0500000000000003102 /* FilePreviewExternalOpenLocationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilePreviewExternalOpenLocationTests.swift; sourceTree = "<group>"; };
 		C0DE86520000000000000010 /* FilePreviewFileState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels/FilePreviewFileState.swift; sourceTree = "<group>"; };
 		A5001431A5001431A5001431 /* FilePreviewFocusCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels/FilePreviewFocusCoordinator.swift; sourceTree = "<group>"; };
 		AF1DE0500000000000000502 /* FilePreviewHighlightDecision.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels/FilePreviewHighlightDecision.swift; sourceTree = "<group>"; };
@@ -7270,6 +7274,7 @@ C0DE71B10000000000000002 /* AppDelegate+AgentChatNotifications.swift */ = {isa =
 				F5168A070000000000000002 /* MarkdownFontFamilyCache.swift */,
 				F5168A050000000000000002 /* MarkdownMaxWidthSettings.swift */,
 				F11E52270000000000005228 /* FilePreviewWordWrapSettings.swift */,
+				AF1DE0500000000000003002 /* FilePreviewExternalOpenLocation.swift */,
 				AF1DE0500000000000002702 /* MarkdownPanel+SaveConflict.swift */,
 				AF1DE0500000000000002602 /* FilePreviewPanel+SaveConflict.swift */,
 				AF1DE0500000000000002502 /* FilePreviewSaveConflictBanner.swift */,
@@ -8232,6 +8237,7 @@ C0DE71B10000000000000002 /* AppDelegate+AgentChatNotifications.swift */ = {isa =
 				7375A0047375A0047375A004 /* ClosedMainWindowRoutingTests.swift */,
 				E50320010000000000000002 /* ExtensionWorktreeSpawnArgsTests.swift */,
 				C0DE49950000000000000002 /* FilePreviewKindResolverTests.swift */,
+				AF1DE0500000000000003102 /* FilePreviewExternalOpenLocationTests.swift */,
 				AF1DE0500000000000002902 /* SessionRestoreForkRegressionTests.swift */,
 				AF1DE0500000000000002802 /* FilePreviewSaveConflictCoordinatorTests.swift */,
 				AF1DE0500000000000002002 /* FilePreviewLineNumberRulerViewTests.swift */,
@@ -9637,6 +9643,7 @@ C0DE71B10000000000000002 /* AppDelegate+AgentChatNotifications.swift */ = {isa =
 				FE001104 /* FileExplorerTerminalPathInsertion.swift in Sources */,
 				FE001102 /* FileExplorerView.swift in Sources */,
 				A5001441A5001441A5001441 /* FileOpenSocketSupport.swift in Sources */,
+					AF1DE0500000000000003001 /* FilePreviewExternalOpenLocation.swift in Sources */,
 				C0DE8652000000000000000F /* FilePreviewFileState.swift in Sources */,
 				A5001432A5001432A5001432 /* FilePreviewFocusCoordinator.swift in Sources */,
 					AF1DE0500000000000000501 /* FilePreviewHighlightDecision.swift in Sources */,
@@ -11341,6 +11348,7 @@ C0DE71B10000000000000002 /* AppDelegate+AgentChatNotifications.swift */ = {isa =
 				B37A0000000000000000000B /* FileExplorerStateModePersistenceTests.swift in Sources */,
 				FE002102 /* FileExplorerStoreTests.swift in Sources */,
 				828800010000000000000002 /* FileExplorerStyleContrastTests.swift in Sources */,
+				AF1DE0500000000000003101 /* FilePreviewExternalOpenLocationTests.swift in Sources */,
 				AF1DE0500000000000001401 /* FilePreviewHighlightJavaScriptEngineTests.swift in Sources */,
 				AF1DE0500000000000000901 /* FilePreviewHighlightPaletteTests.swift in Sources */,
 				AF1DE0500000000000000801 /* FilePreviewHighlightPolicyTests.swift in Sources */,

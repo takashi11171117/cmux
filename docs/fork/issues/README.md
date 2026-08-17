@@ -25,7 +25,7 @@
 | AFIDE-09 | [`FilePreviewLineIndex` の実装](./afide-09_line-index.md)（**完了**） | 実装 | 02 | FR-05, NFR-04 |
 | AFIDE-10 | [行番号表示](./afide-10_line-number-ruler.md)（**完了**） | 実装 | 04, 09 | FR-05, FR-06, NFR-14 |
 | AFIDE-11 | [コード拡張子のルーティング確定と入口別検証](./afide-11_text-extensions-and-entrypoint-verification.md)（**完了**） | 実装 | 02 | FR-10, FR-02 AC1, NFR-13 |
-| AFIDE-12 | [外部変更 × 未保存バッファの選択 UI](./afide-12_save-conflict-ui.md)（**Reload / Keep Mine 完了。Compare は AFIDE-13 待ち**） | 実装 | 02（マージ可否は 13 に依存） | FR-07, NFR-06, NFR-12 |
+| AFIDE-12 | [外部変更 × 未保存バッファの選択 UI](./afide-12_save-conflict-ui.md)（**完了**。Compare は 2026-08-17 にスコープ外と決定） | 実装 | 02（マージ可否は 13 に依存） | FR-07, NFR-06, NFR-12 |
 | AFIDE-13 | [Compare の実現方式決定（未確定-03 / 新規-D の解決）](./afide-13_compare-decision.md)（**調査完了** → [結果](./afide-13_調査結果.md)） | 調査 | 02 | FR-08, FR-07 AC1 |
 | AFIDE-14 | [外部エディタへの行番号受け渡し](./afide-14_external-editor-line-number.md) | 実装（打ち切り可） | 02 | FR-09, D-04 |
 
@@ -74,7 +74,7 @@ Phase 3（独立。Phase 0 完了後いつでも並行可）
 |---|---|---|---|
 | ~~**未確定-02**~~ **解決済み** | ハイライトエンジンの選定 → **同梱 highlight.js + JavaScriptCore（選択肢 C）を採用**。根拠は [AFIDE-01 調査結果](./afide-01_調査結果.md) | AFIDE-06 | AFIDE-01 で解決済み |
 | ~~**未確定-05**~~ **解決済み** | `fileEditor.syntaxHighlight` / `.lineNumbers` の既定値 → **両方 `true`**（2026-08-17 決定）。FR-04 AC3 の実装ブロックは解除。閾値（`maximumHighlightBytes`）は定数のまま AFIDE-07 で決める | AFIDE-04 | 決定済み |
-| **未確定-03** | ~~Compare の実体~~ → **技術的には (i) `.patch` 経由で成立すると判明**（[AFIDE-13 調査結果](./afide-13_調査結果.md)）。ただし**当面実装しないことを推奨**。残るのは**「Reload / Keep Mine の2択で先行リリースしてよいか」の本人判断**。2択で確定するなら 02 の FR-07 受け入れ条件1（3択を要求）の修正が要る | AFIDE-12 の**マージ可否** | 本人判断 |
+| ~~**未確定-03**~~ **解決済み** | Compare → **実装しない。FR-07 は Reload / Keep Mine の2択で確定**（2026-08-17）。技術的には成立するが、`.patch` の平文書き出しに伴う実装コストが補助機能に見合わない。根拠は [AFIDE-13 調査結果](./afide-13_調査結果.md) | — | 決定済み |
 | ~~**未確定-11**~~ **解決済み** | upstream 追従の実施時期 → **upstream #10225 のクローズまで延期**（2026-08-17 決定）。`upstream/main` は `04ff18eea6` により macOS がビルド不能で、取り込むと NFR-10 の受け入れ条件2 を満たせない。リモート追加は完了済み。根拠は [AFIDE-02 基準線記録](./afide-02_基準線記録.md) | AFIDE-02 | AFIDE-02 で解決済み |
 
 > **AFIDE-01 の調査で新規-H 〜 新規-N の7件が追加で判明した**。一覧と扱いは [AFIDE-01 調査結果 §6](./afide-01_調査結果.md#6-この調査で新たに判明した未確定事項) を見ること。

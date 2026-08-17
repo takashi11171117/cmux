@@ -2,6 +2,7 @@ import CmuxFoundation
 import AppKit
 import Bonsplit
 import Combine
+import CmuxWorkspaces
 import Foundation
 import PDFKit
 import Quartz
@@ -127,6 +128,17 @@ enum FileExternalOpenAction {
 }
 
 enum FileExternalOpenText {
+    /// Title for the caret-aware entry, e.g. "Open in Editor at Line 42".
+    static func openInPreferredEditorAtLine(_ line: Int) -> String {
+        String(
+            format: String(
+                localized: "filePreview.openInPreferredEditorAtLine",
+                defaultValue: "Open in Editor at Line %lld"
+            ),
+            line
+        )
+    }
+
     static var openWithMenu: String {
         String(localized: "filePreview.openWith.menu", defaultValue: "Open With")
     }
@@ -146,13 +158,28 @@ enum FileExternalOpenText {
 }
 
 enum FileExternalOpenMenuFactory {
+    /// Builds the "open externally" menu.
+    ///
+    /// - Parameter caretLine: When non-nil, adds an entry that opens through the
+    ///   configured preferred-editor command at that line. Defaults to `nil` so callers
+    ///   without a caret — the file explorer, the chrome button — are unaffected.
     static func makeMenu(
         fileURL: URL,
         primaryApplication: FileExternalOpenApplication?,
-        otherApplications: [FileExternalOpenApplication]
+        otherApplications: [FileExternalOpenApplication],
+        caretLine: Int? = nil
     ) -> NSMenu {
         let menu = NSMenu(title: FileExternalOpenText.openWithMenu)
         menu.autoenablesItems = false
+
+        if let caretLine {
+            menu.addItem(menuItem(
+                title: FileExternalOpenText.openInPreferredEditorAtLine(caretLine),
+                fileURL: fileURL,
+                action: .openInPreferredEditor(line: caretLine)
+            ))
+            menu.addItem(.separator())
+        }
 
         if let primaryApplication {
             menu.addItem(menuItem(
@@ -234,6 +261,11 @@ struct FileExternalOpenMenu: View {
     let fileURL: URL
     var isDisabled = false
     var style: FileExternalOpenMenuStyle = .header
+    /// Supplies the caret line when the menu opens, or `nil` to omit the line-aware entry.
+    ///
+    /// A closure rather than a value so the caret is read at menu-open time; a stored line
+    /// would be whatever it was on the last SwiftUI update.
+    var caretLineProvider: (@MainActor () -> Int?)?
 
     @State private var resolvedApplications: [FileExternalOpenApplication] = []
 
@@ -253,7 +285,8 @@ struct FileExternalOpenMenu: View {
                     primaryApplication: primaryApplication,
                     otherApplications: otherApplications,
                     helpText: helpText,
-                    isDisabled: isDisabled
+                    isDisabled: isDisabled,
+                    caretLineProvider: caretLineProvider
                 )
             case .chrome:
                 Button {
@@ -363,6 +396,7 @@ private struct FileExternalOpenHeaderMenuButton: View {
     let otherApplications: [FileExternalOpenApplication]
     let helpText: String
     let isDisabled: Bool
+    var caretLineProvider: (@MainActor () -> Int?)?
 
     var body: some View {
         Button(action: presentMenu) {
@@ -396,7 +430,8 @@ private struct FileExternalOpenHeaderMenuButton: View {
         FileExternalOpenMenuFactory.makeMenu(
             fileURL: fileURL,
             primaryApplication: primaryApplication,
-            otherApplications: otherApplications
+            otherApplications: otherApplications,
+            caretLine: caretLineProvider?()
         )
     }
 }
@@ -404,6 +439,15 @@ private struct FileExternalOpenHeaderMenuButton: View {
 private enum FileExternalOpenMenuPayloadAction {
     case open(applicationURL: URL?)
     case revealInFinder
+    /// Open through the configured `app.preferredEditor` command, carrying a caret line.
+    ///
+    /// Separate from ``open(applicationURL:)`` because that path goes through
+    /// LaunchServices, which has no way to pass a line: `NSWorkspace.OpenConfiguration`
+    /// does expose `arguments`, but only for a *newly created* application instance, and
+    /// the existing call sets `createsNewApplicationInstance = false`. An already-running
+    /// editor would silently ignore the line, making the behavior depend on whether the
+    /// editor happened to be open.
+    case openInPreferredEditor(line: Int?)
 }
 
 private final class FileExternalOpenMenuActionPayload: NSObject {
@@ -432,6 +476,14 @@ private final class FileExternalOpenMenuActionTarget: NSObject {
             FileExternalOpenAction.open(fileURL: payload.fileURL, applicationURL: applicationURL)
         case .revealInFinder:
             FileExternalOpenAction.revealInFinder(fileURL: payload.fileURL)
+        case .openInPreferredEditor(let line):
+            // `PreferredEditorService` is @MainActor while this @objc selector is not, so the
+            // isolation has to be stated. AppKit only sends menu actions on the main thread,
+            // which is what makes the assumption sound rather than a shortcut; the other
+            // branches happen to call nonisolated APIs and so never had to say it.
+            MainActor.assumeIsolated {
+                PreferredEditorService(defaults: .standard).open(payload.fileURL, line: line)
+            }
         }
     }
 }
@@ -1016,6 +1068,15 @@ final class FilePreviewPanel: Panel, ObservableObject, FilePreviewTextEditingPan
     var lastObservedFileState: FilePreviewFileState?
     var isClosed = false
     weak var textView: NSTextView?
+
+    /// Caret line for "open in editor at line", or `nil` when there is no text caret.
+    ///
+    /// Returns `nil` outside text mode: a PDF or image has no line for an editor to jump to,
+    /// and offering the entry there would be noise.
+    func caretLineForExternalOpen() -> Int? {
+        guard previewMode == .text, let textView else { return nil }
+        return FilePreviewExternalOpenLocation(fileURL: fileURL, caretIn: textView).line
+    }
     let focusCoordinator: FilePreviewFocusCoordinator
     private let textLoader: @Sendable (URL) async -> FilePreviewTextLoader.Result
     private let textSaver: @Sendable (String, URL, String.Encoding) async -> FilePreviewTextSaver.Result
@@ -1476,7 +1537,11 @@ struct FilePreviewPanelView: View {
                 action: { panel.reloadFromDisk() }
             )
 
-            FileExternalOpenMenu(fileURL: panel.fileURL, isDisabled: panel.isFileUnavailable)
+            FileExternalOpenMenu(
+                fileURL: panel.fileURL,
+                isDisabled: panel.isFileUnavailable,
+                caretLineProvider: { panel.caretLineForExternalOpen() }
+            )
         }
     }
 

@@ -29,6 +29,61 @@ struct PreferredEditorServiceTests {
         return url
     }
 
+    @Test func commandWithoutPlaceholdersKeepsHistoricalShape() {
+        // Existing configurations must be untouched by the line-number feature.
+        let script = PreferredEditorService.shellCommand(
+            command: "code", path: "/tmp/a.swift", line: 12
+        )
+        #expect(script == "code '/tmp/a.swift'")
+    }
+
+    @Test func filePlaceholderReceivesTheQuotedPath() {
+        let script = PreferredEditorService.shellCommand(
+            command: "code --goto {file}:{line}", path: "/tmp/a b.swift", line: 12
+        )
+        #expect(script == "code --goto '/tmp/a b.swift':12")
+    }
+
+    @Test func nilLineOpensAtTheTop() {
+        let script = PreferredEditorService.shellCommand(
+            command: "code --goto {file}:{line}", path: "/tmp/a.swift", line: nil
+        )
+        #expect(script == "code --goto '/tmp/a.swift':1")
+    }
+
+    @Test func lineOnlyCommandStillReceivesThePath() {
+        // A half-written command degrades to opening the file rather than running with a
+        // literal {line} in it.
+        let script = PreferredEditorService.shellCommand(
+            command: "myeditor --line {line}", path: "/tmp/a.swift", line: 7
+        )
+        #expect(script == "myeditor --line 7 '/tmp/a.swift'")
+    }
+
+    @Test func apostropheInPathCannotEscapeTheQuotes() {
+        // The whole point of routing the path through posixShellSingleQuoted: a file named
+        // with a quote must not be able to terminate the quoted word and append commands.
+        let script = PreferredEditorService.shellCommand(
+            command: "code --goto {file}:{line}", path: "/tmp/it's; rm -rf ~.swift", line: 3
+        )
+        #expect(script == #"code --goto '/tmp/it'\''s; rm -rf ~.swift':3"#)
+        #expect(!script.contains("; rm -rf ~.swift';"), "the injection payload must stay inside quotes")
+    }
+
+    @Test func xedStyleCommandIsSupported() {
+        let script = PreferredEditorService.shellCommand(
+            command: "xed --line {line} {file}", path: "/tmp/a.swift", line: 42
+        )
+        #expect(script == "xed --line 42 '/tmp/a.swift'")
+    }
+
+    @Test func placeholdersAppearingTwiceAreAllSubstituted() {
+        let script = PreferredEditorService.shellCommand(
+            command: "e {file} --also {file} --line {line}", path: "/tmp/a.swift", line: 5
+        )
+        #expect(script == "e '/tmp/a.swift' --also '/tmp/a.swift' --line 5")
+    }
+
     @Test func configuredCaptureInterceptsTheOpen() throws {
         let scratch = try makeScratchDirectory()
         defer { try? FileManager.default.removeItem(at: scratch) }

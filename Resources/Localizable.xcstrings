@@ -118374,6 +118374,23 @@
         }
       }
     },
+    "filePreview.openInPreferredEditorAtLine": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open in Editor at Line %lld"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エディタで %lld 行目を開く"
+          }
+        }
+      }
+    },
     "filePreview.openWith.menu": {
       "extractionState": "manual",
       "localizations": {
