@@ -20,6 +20,14 @@ struct CodeReviewPanelView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // Leaves the titlebar band clear instead of letting the column's tab bar rise
+            // into it. The terminal area is two rows — titlebar, then tab bar — and without
+            // this the column is one, so its tab bar lands on the same line as the titlebar's
+            // panel toggles and the two icon sets overlap.
+            Color.clear
+                .frame(height: WindowChromeMetrics.appTitlebarHeight)
+                .allowsHitTesting(false)
+
             WorkspaceContentView(
                 workspace: state.workspace,
                 isWorkspaceVisible: isVisibleInUI,
