@@ -63,6 +63,15 @@ if [[ ! -f "$SECRETS_FILE" ]]; then
   echo "AFIDE_SIGN_HASH and SPARKLE_PRIVATE_KEY, then chmod 600 it." >&2
   exit 1
 fi
+# The Sparkle key generator rewrites this file and resets it to 0644, so re-assert 0600
+# rather than trusting whatever the last tool to touch it left behind. It holds the private
+# key that signs every update; world-readable is not acceptable.
+SECRETS_MODE="$(stat -f "%Lp" "$SECRETS_FILE")"
+if [[ "$SECRETS_MODE" != "600" ]]; then
+  echo "Tightening $SECRETS_FILE from $SECRETS_MODE to 600"
+  chmod 600 "$SECRETS_FILE"
+fi
+
 # shellcheck source=/dev/null
 source "$SECRETS_FILE"
 export SPARKLE_PRIVATE_KEY
@@ -94,6 +103,7 @@ if [[ "$IDENTITY_NAME" != "Developer ID Application:"* ]]; then
 fi
 echo "Pre-flight checks passed (signing as $IDENTITY_NAME)"
 
+BUILT_APP_PATH="build/Build/Products/Release/cmux.app"
 APP_PATH="build/Build/Products/Release/${APP_DISPLAY_NAME}.app"
 APPCAST_URL="https://github.com/${GITHUB_REPO}/releases/latest/download/appcast.xml"
 
@@ -115,19 +125,36 @@ rm -rf GhosttyKit.xcframework ghostty/macos/GhosttyKit.xcframework
 cp -R ghostty/macos/GhosttyKit.xcframework GhosttyKit.xcframework
 
 # --- Build app (Release, unsigned) ---
+#
+# PRODUCT_NAME is deliberately NOT passed here. On the command line it applies to every
+# target, so the resource bundles and swiftmodules get renamed too and the build fails with
+# "Multiple commands produce .../cmux AFIDE.bundle". The app is renamed after the build
+# instead, the same way scripts/reload.sh does it.
 echo "Building $APP_DISPLAY_NAME..."
 rm -rf build/
 xcodebuild -scheme cmux -configuration Release -derivedDataPath build \
   CODE_SIGNING_ALLOWED=NO \
-  PRODUCT_NAME="$APP_DISPLAY_NAME" \
   PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
+  CMUX_SIDEBAR_EXTENSION_POINT_ID="${BUNDLE_ID}.cmux.sidebar" \
+  INFOPLIST_KEY_CFBundleName="$APP_DISPLAY_NAME" \
   build 2>&1 | tail -5
 
-if [[ ! -d "$APP_PATH" ]]; then
-  echo "ERROR: expected app at $APP_PATH" >&2
+if [[ ! -d "$BUILT_APP_PATH" ]]; then
+  echo "ERROR: expected app at $BUILT_APP_PATH" >&2
   exit 1
 fi
-echo "Build succeeded"
+
+# --- Rename the bundle and stamp its identity ---
+rm -rf "$APP_PATH"
+cp -R "$BUILT_APP_PATH" "$APP_PATH"
+APP_PLIST_EARLY="$APP_PATH/Contents/Info.plist"
+for pair in "CFBundleName:$APP_DISPLAY_NAME" "CFBundleDisplayName:$APP_DISPLAY_NAME" "CFBundleIdentifier:$BUNDLE_ID"; do
+  key="${pair%%:*}"
+  value="${pair#*:}"
+  /usr/libexec/PlistBuddy -c "Set :$key $value" "$APP_PLIST_EARLY" 2>/dev/null \
+    || /usr/libexec/PlistBuddy -c "Add :$key string $value" "$APP_PLIST_EARLY"
+done
+echo "Build succeeded ($APP_DISPLAY_NAME, $BUNDLE_ID)"
 
 HELPER_PATH="$APP_PATH/Contents/Resources/bin/ghostty"
 if [[ ! -x "$HELPER_PATH" ]]; then

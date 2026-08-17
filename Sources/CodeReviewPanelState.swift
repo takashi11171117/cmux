@@ -90,7 +90,7 @@ final class CodeReviewPanelState: ObservableObject {
     ///   - candidate: Requested width.
     ///   - availableWidth: Window width, used to leave room for the terminal.
     /// - Returns: A usable width.
-    static func clampedWidth(_ candidate: CGFloat, availableWidth: CGFloat) -> CGFloat {
+    nonisolated static func clampedWidth(_ candidate: CGFloat, availableWidth: CGFloat) -> CGFloat {
         let ceiling = min(maximumWidth, max(minimumWidth, availableWidth * 0.6))
         return min(max(candidate, minimumWidth), ceiling)
     }

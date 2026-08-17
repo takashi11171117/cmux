@@ -96,9 +96,15 @@ enum FileExplorerFileOperation {
     /// Moves the item at `url` to the Trash.
     ///
     /// - Parameter url: Item to trash.
+    /// - Returns: Where the item landed in the Trash, when the system reports it. Callers in
+    ///   the app ignore this; it exists so a test can clean up after itself instead of
+    ///   leaving debris in the user's Trash on every run.
     /// - Throws: Any error `FileManager` raises.
-    static func moveToTrash(_ url: URL) throws {
-        try FileManager.default.trashItem(at: url, resultingItemURL: nil)
+    @discardableResult
+    static func moveToTrash(_ url: URL) throws -> URL? {
+        var resulting: NSURL?
+        try FileManager.default.trashItem(at: url, resultingItemURL: &resulting)
+        return resulting as URL?
     }
 }
 
