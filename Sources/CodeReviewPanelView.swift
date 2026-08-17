@@ -54,6 +54,10 @@ struct CodeReviewPanelView: View {
         .frame(height: 22)
     }
 
-    /// Above the terminal area's portals, so the column's own surfaces win inside its frame.
-    private static let portalPriority = 100
+    /// Matches what the terminal area gives its selected workspace.
+    ///
+    /// Not a higher number: portals are window-level AppKit layers, so raising this above the
+    /// rest puts the column's surfaces over the whole window — including this view's own hide
+    /// button and the column's resize handle, which then cannot be clicked at all.
+    private static let portalPriority = 2
 }

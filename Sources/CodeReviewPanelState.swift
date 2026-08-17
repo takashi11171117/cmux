@@ -44,10 +44,16 @@ final class CodeReviewPanelState: ObservableObject {
     /// file was in. Terminals belong in the terminal area, which has its own button for
     /// them. The two visibility toggles are left out too — the column hides itself from its
     /// own header, and the right sidebar toggles from the terminal tab bar.
+    ///
+    /// Built with ``CmuxSurfaceTabBarButton/builtIn(_:id:title:icon:tooltip:)`` rather than the
+    /// `.newBrowser` / `.splitRight` / `.splitDown` constants: those are *unresolved action
+    /// references*, which the config layer turns into built-in actions before handing them to
+    /// a workspace. Passing them straight through leaves the action unresolved and the tab bar
+    /// renders a question mark for every button.
     private static let tabBarButtons: [CmuxSurfaceTabBarButton] = [
-        .newBrowser,
-        .splitRight,
-        .splitDown
+        .builtIn(.newBrowser),
+        .builtIn(.splitRight),
+        .builtIn(.splitDown)
     ]
 
     static let defaultWidth: CGFloat = 520

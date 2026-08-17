@@ -1757,6 +1757,89 @@ struct ContentView: View {
         )
     }
 
+    /// Always-visible show/hide buttons for the code-review column and the right sidebar.
+    ///
+    /// Both panels can hide themselves — the column from its own header, the sidebar from its
+    /// `xmark` — but neither leaves anything behind to bring it back, so closing one is a
+    /// one-way trip unless the user remembers a shortcut.
+    ///
+    /// These live inside ``customTitlebar`` rather than as an overlay over the content. An
+    /// overlay works only while a panel is open: once it closes, the terminal area expands
+    /// under the buttons, and its surfaces are AppKit portals hosted above the SwiftUI tree,
+    /// so they swallow the clicks no matter how high a `zIndex` the overlay is given. The
+    /// symptom is a toggle that can close a panel but never reopen it. The titlebar strip is
+    /// outside the portals' region, so the buttons keep working in both directions.
+    private var panelToggleButtons: some View {
+        HStack(spacing: 2) {
+            panelToggleButton(
+                systemName: "chevron.left.forwardslash.chevron.right",
+                isOn: codeReviewState.isVisible,
+                label: String(
+                    localized: "codeReview.toggle.tooltip",
+                    defaultValue: "Toggle Code Review"
+                ),
+                identifier: "PanelToggle.codeReview",
+                action: { codeReviewState.toggle() }
+            )
+            panelToggleButton(
+                systemName: "sidebar.right",
+                isOn: fileExplorerState.isVisible,
+                label: String(
+                    localized: "rightSidebar.toggle.tooltip",
+                    defaultValue: "Toggle right sidebar"
+                ),
+                identifier: "PanelToggle.rightSidebar",
+                action: {
+                    _ = AppDelegate.shared?.toggleRightSidebarInActiveMainWindow(
+                        preferredWindow: observedWindow
+                    )
+                }
+            )
+        }
+        .padding(.trailing, 8)
+        .titlebarInteractiveControl()
+    }
+
+    private func panelToggleButton(
+        systemName: String,
+        isOn: Bool,
+        label: String,
+        identifier: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 12, weight: .medium))
+                .frame(width: 24, height: 22)
+                .contentShape(Rectangle())
+                // Filled when the panel is showing, so the pair doubles as a state readout
+                // rather than two buttons whose effect you have to try to find out.
+                .background(
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(isOn ? Color.primary.opacity(0.14) : Color.clear)
+                )
+        }
+        .buttonStyle(.plain)
+        .help(label)
+        .accessibilityLabel(label)
+        .accessibilityIdentifier(identifier)
+    }
+
+    /// Drag handle on the code-review column's leading edge.
+    ///
+    /// Sits inboard of the right sidebar, so its x is measured from the window's trailing edge
+    /// past whatever the sidebar occupies. Without this the column renders at a fixed width:
+    /// ``resizerConfig(for:availableWidth:)`` has handled `.codeReviewDivider` since the column
+    /// was added, but nothing ever placed a handle for it.
+    private var codeReviewResizerOverlay: some View {
+        placedSidebarResizerOverlay(
+            handle: .codeReviewDivider,
+            edge: .trailing,
+            accessibilityIdentifier: "CodeReviewResizer",
+            dividerX: { totalWidth in totalWidth - rightSidebarWidth - codeReviewState.width }
+        )
+    }
+
     private var sidebarView: some View {
         let sidebar = VerticalTabsSidebar(
             updateViewModel: updateViewModel,
@@ -2235,6 +2318,11 @@ struct ContentView: View {
 
                     Spacer()
 
+                    // Shifted inboard of the right sidebar while it is open: its header owns
+                    // the same titlebar band, and the two icon sets otherwise land on top of
+                    // each other.
+                    panelToggleButtons
+                        .padding(.trailing, rightSidebarVisible ? rightSidebarWidth : 0)
                 }
                 .frame(height: titlebarContentHeight)
                 .padding(.top, 2)
@@ -2702,6 +2790,12 @@ struct ContentView: View {
                 .overlay(alignment: .leading) {
                     if rightSidebarVisible {
                         rightSidebarResizerOverlay
+                            .zIndex(1000)
+                    }
+                }
+                .overlay(alignment: .leading) {
+                    if codeReviewState.isVisible {
+                        codeReviewResizerOverlay
                             .zIndex(1000)
                     }
                 }

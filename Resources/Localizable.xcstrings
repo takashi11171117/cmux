@@ -56714,6 +56714,23 @@
         }
       }
     },
+    "codeReview.toggle.tooltip": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toggle Code Review"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u30b3\u30fc\u30c9\u30ec\u30d3\u30e5\u30fc\u306e\u8868\u793a\u5207\u66ff"
+          }
+        }
+      }
+    },
     "codeReview.hideColumn": {
       "extractionState": "manual",
       "localizations": {
