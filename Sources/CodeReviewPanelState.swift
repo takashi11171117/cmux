@@ -60,7 +60,12 @@ final class CodeReviewPanelState: ObservableObject {
     /// how the pane-based path treats a second request for the same path.
     ///
     /// - Parameter filePath: File to show.
-    func show(filePath: String) {
+    /// - Returns: The editor showing the file, whether newly opened or already present, or
+    ///   `nil` if the column has no pane to open it in. Callers driving UI ignore this; the
+    ///   socket needs it to report a surface id, since answering "opened" with a null surface
+    ///   would break the contract every other open path honours.
+    @discardableResult
+    func show(filePath: String) -> FilePreviewPanel? {
         isVisible = true
 
         let canonical = (filePath as NSString).resolvingSymlinksInPath
@@ -68,15 +73,15 @@ final class CodeReviewPanelState: ObservableObject {
             guard let preview = panel as? FilePreviewPanel else { continue }
             if (preview.filePath as NSString).resolvingSymlinksInPath == canonical {
                 workspace.focusPanel(panelId)
-                return
+                return preview
             }
         }
 
         // Into the focused pane as another tab, never a split. Splitting on every opened file
         // is what the column exists to avoid; the user splits deliberately, via the tab bar.
         guard let pane = workspace.bonsplitController.focusedPaneId
-            ?? workspace.bonsplitController.allPaneIds.first else { return }
-        _ = workspace.newFilePreviewSurface(inPane: pane, filePath: filePath, focus: true)
+            ?? workspace.bonsplitController.allPaneIds.first else { return nil }
+        return workspace.newFilePreviewSurface(inPane: pane, filePath: filePath, focus: true)
     }
 
     /// Toggles visibility, without discarding what is open.

@@ -6974,9 +6974,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     @discardableResult
     @MainActor
     func showFileInCodeReviewColumn(filePath: String) -> Bool {
-        guard let codeReviewPanelState else { return false }
-        codeReviewPanelState.show(filePath: filePath)
-        return true
+        openFileInCodeReviewColumn(filePath: filePath) != nil
+    }
+
+    /// Opens `filePath` in the code-review column and returns its editor and workspace.
+    ///
+    /// The workspace comes back alongside the panel because it is the column's own, not the
+    /// one the request arrived through — callers building a socket response need both to
+    /// resolve a pane and surface id.
+    ///
+    /// - Parameter filePath: File to show.
+    /// - Returns: The editor and the column's workspace, or `nil` when the column is not
+    ///   mounted (no window on screen yet).
+    func openFileInCodeReviewColumn(filePath: String) -> (panel: FilePreviewPanel, workspace: Workspace)? {
+        guard let codeReviewPanelState else { return nil }
+        guard let panel = codeReviewPanelState.show(filePath: filePath) else { return nil }
+        return (panel, codeReviewPanelState.workspace)
     }
 
     /// Toggles the code-review column in the active window.

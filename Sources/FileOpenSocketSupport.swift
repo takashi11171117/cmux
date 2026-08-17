@@ -145,24 +145,40 @@ extension TerminalController {
             // opening a second file adds a tab there instead of splitting again.
             if !hasExplicitPaneDestination,
                filePaths.count == 1,
-               AppDelegate.shared?.showFileInCodeReviewColumn(filePath: filePaths[0]) == true {
+               let column = AppDelegate.shared?.openFileInCodeReviewColumn(filePath: filePaths[0]) {
+                // Reported through the same payload builder as every other open path. The
+                // column has its own workspace, so a real pane and surface exist; answering
+                // with nulls would make "the response names the surface it opened" false for
+                // exactly the case that is now the default.
+                //
+                // `workspace_id` is the column's workspace, not the one the request arrived
+                // through — that is where the file actually is. It is not owned by the tab
+                // manager, so it does not appear in `cmux workspace list`; `opened_in` is
+                // what tells a client this is the column rather than a tab.
                 let windowId = v2ResolveWindowId(tabManager: tabManager)
-                result = .ok([
+                let surfacePayload = v2FileOpenSurfacePayload(
+                    workspace: column.workspace,
+                    panel: column.panel
+                )
+                var response: [String: Any] = [
                     "window_id": v2OrNull(windowId?.uuidString),
                     "window_ref": v2Ref(kind: .window, uuid: windowId),
-                    "workspace_id": ws.id.uuidString,
-                    "workspace_ref": v2Ref(kind: .workspace, uuid: ws.id),
-                    // No surface or pane: the column is not part of the workspace split tree.
-                    "pane_id": NSNull(),
-                    "pane_ref": NSNull(),
-                    "surface_id": NSNull(),
-                    "surface_ref": NSNull(),
-                    "panel_type": NSNull(),
-                    "path": filePaths[0],
+                    "workspace_id": column.workspace.id.uuidString,
+                    "workspace_ref": v2Ref(kind: .workspace, uuid: column.workspace.id),
+                    "pane_id": surfacePayload["pane_id"] ?? NSNull(),
+                    "pane_ref": surfacePayload["pane_ref"] ?? NSNull(),
+                    "surface_id": surfacePayload["surface_id"] ?? NSNull(),
+                    "surface_ref": surfacePayload["surface_ref"] ?? NSNull(),
+                    "panel_type": surfacePayload["panel_type"] ?? NSNull(),
+                    "path": surfacePayload["path"] ?? filePaths[0],
                     "paths": filePaths,
-                    "surfaces": [],
+                    "surfaces": [surfacePayload],
                     "opened_in": "code_review_column"
-                ])
+                ]
+                if let previewMode = surfacePayload["preview_mode"] {
+                    response["preview_mode"] = previewMode
+                }
+                result = .ok(response)
                 return
             }
 
