@@ -83,8 +83,22 @@ for var in APPLE_ID APPLE_TEAM_ID APPLE_APP_SPECIFIC_PASSWORD AFIDE_SIGN_HASH SP
   fi
 done
 
-for tool in zig xcodebuild create-dmg xcrun codesign ditto gh; do
+# rustup installs into ~/.cargo/bin, which a non-login shell does not have on PATH. The
+# Nucleo FFI build phase treats a missing cargo as optional and skips, but signing then fails
+# on the absent dylib — 20 minutes into the run, after the whole Release build.
+export PATH="$HOME/.cargo/bin:$PATH"
+
+for tool in zig xcodebuild create-dmg xcrun codesign ditto gh cargo; do
   command -v "$tool" >/dev/null || { echo "MISSING: $tool" >&2; exit 1; }
+done
+
+# Both slices are required: the app is built universal, so a missing target aborts the FFI
+# build for that architecture only, which again surfaces as a missing dylib at signing time.
+for rust_target in aarch64-apple-darwin x86_64-apple-darwin; do
+  if ! rustc --print target-libdir --target "$rust_target" >/dev/null 2>&1; then
+    echo "MISSING: Rust target $rust_target (run: rustup target add $rust_target)" >&2
+    exit 1
+  fi
 done
 
 # The identity must be a Developer ID Application certificate. Apple Development certificates
