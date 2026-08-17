@@ -45,8 +45,9 @@ struct FilePreviewSyntaxLanguage: Sendable {
     /// Keeping those rows would return a language id for which the engine produces no
     /// tokens — an engine round-trip that can only ever yield plain text.
     ///
-    /// `dart` is kept despite also being absent, because FR-02 requires it and
-    /// AFIDE-06 registers the 2,216-byte `dart.min.js` grammar alongside the bundle.
+    /// `dart` is also absent from that build, but unlike the six above it is required by
+    /// FR-02, so the matching 11.10.0 grammar is vendored next to the core script and
+    /// loaded by ``FilePreviewHighlightJavaScriptEngine/additionalGrammars``.
     ///
     /// The table is duplicated rather than shared: the macOS app does not link
     /// `Packages/iOS/CmuxAgentChatUI`, and moving that package to `Packages/Shared`

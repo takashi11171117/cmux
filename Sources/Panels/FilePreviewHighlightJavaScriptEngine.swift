@@ -42,6 +42,14 @@ actor FilePreviewHighlightJavaScriptEngine: FilePreviewSyntaxHighlighting {
         self.scriptURL = scriptURL
     }
 
+    /// Language grammars vendored next to the core script.
+    ///
+    /// The bundled highlight.js is the "common" build (36 languages) and has no Dart, so
+    /// `dart.min.js` from the same 11.10.0 release sits beside it. Adding a row here means
+    /// dropping the matching `<name>.min.js` into `Resources/markdown-viewer/`; that folder
+    /// is a pbxproj *folder reference*, so new files need no project-file change.
+    static let additionalGrammars = ["dart"]
+
     /// The highlight.js copy shipped for Markdown preview, or `nil` if absent.
     static var bundledScriptURL: URL? {
         Bundle.main.url(
@@ -84,6 +92,17 @@ actor FilePreviewHighlightJavaScriptEngine: FilePreviewSyntaxHighlighting {
         guard let hljs = created.objectForKeyedSubscript("hljs"), !hljs.isUndefined else {
             preparationFailed = true
             return nil
+        }
+
+        // Grammars the bundled "common" build leaves out, vendored alongside it. Loaded
+        // after the core script because each one calls `hljs.registerLanguage` on the
+        // global the core defines. A missing file is skipped rather than fatal: the
+        // language then behaves like any other unknown extension and renders plain.
+        let grammarDirectory = scriptURL.deletingLastPathComponent()
+        for grammar in Self.additionalGrammars {
+            let grammarURL = grammarDirectory.appendingPathComponent("\(grammar).min.js")
+            guard let source = try? String(contentsOf: grammarURL, encoding: .utf8) else { continue }
+            created.evaluateScript(source)
         }
 
         created.setObject(Self.scopeRoleIdentifiers, forKeyedSubscript: "cmuxScopeRoles" as NSString)

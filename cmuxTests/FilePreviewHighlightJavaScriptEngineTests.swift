@@ -147,13 +147,37 @@ struct FilePreviewHighlightJavaScriptEngineTests {
         }
     }
 
-    @Test("dart is not yet supported by the bundled build")
-    func dartIsNotYetSupported() async {
-        // FR-02 lists Dart, but the bundled highlight.js 11.10.0 has no dart grammar and
-        // the 2.2 KB grammar file has not been vendored yet. Pinning the current state so
-        // that adding the grammar flips this test rather than passing silently.
-        let text = "void main() { var x = 1; }"
+    @Test("dart works through the vendored grammar")
+    func dartIsSupported() async {
+        // The bundled highlight.js is the "common" build and has no dart grammar; the
+        // matching 11.10.0 grammar is vendored next to it. This is what proves the extra
+        // grammar is actually being loaded, rather than the language silently falling back
+        // to plain text the way an unknown extension would.
+        let text = """
+            // a dart comment
+            void main() {
+              var greeting = 'hello';
+              int count = 42;
+            }
+            """
         let runs = await makeEngine().runs(for: text, language: "dart", range: fullRange(text))
-        #expect(runs.isEmpty, "dart grammar appears to be present now; update FR-02 coverage")
+
+        #expect(!runs.isEmpty, "dart produced no runs; the vendored grammar is not loading")
+        #expect(role(runs, coveringSubstring: "// a dart comment", of: text) == .comment)
+        #expect(role(runs, coveringSubstring: "'hello'", of: text) == .string)
+        #expect(role(runs, coveringSubstring: "42", of: text) == .number)
+    }
+
+    @Test("the vendored grammar file is present")
+    func vendoredGrammarExists() {
+        for grammar in FilePreviewHighlightJavaScriptEngine.additionalGrammars {
+            let url = Self.scriptURL
+                .deletingLastPathComponent()
+                .appendingPathComponent("\(grammar).min.js")
+            #expect(
+                FileManager.default.fileExists(atPath: url.path),
+                "\(grammar).min.js is listed in additionalGrammars but not vendored"
+            )
+        }
     }
 }
