@@ -11,15 +11,20 @@ import Testing
 struct FilePreviewHighlightJavaScriptEngineTests {
     /// The checked-in highlight.js, located relative to this source file so the test does
     /// not depend on which bundle is `main` under the test runner.
-    private static var scriptURL: URL {
+    /// The checked-in asset directory, where scripts are still plain `.js`.
+    private static var sourceDirectory: URL {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-            .appendingPathComponent("Resources/markdown-viewer/highlight.min.js")
+            .appendingPathComponent("Resources/markdown-viewer")
+    }
+
+    private static var scriptURL: URL {
+        sourceDirectory.appendingPathComponent("highlight.min.js")
     }
 
     private func makeEngine() -> FilePreviewHighlightJavaScriptEngine {
-        FilePreviewHighlightJavaScriptEngine(scriptURL: Self.scriptURL)
+        FilePreviewHighlightJavaScriptEngine(sourceDirectory: Self.sourceDirectory)
     }
 
     private func fullRange(_ text: String) -> NSRange {
@@ -106,7 +111,7 @@ struct FilePreviewHighlightJavaScriptEngineTests {
     @Test("a missing script degrades to plain text rather than trapping")
     func missingScriptIsEmpty() async {
         let engine = FilePreviewHighlightJavaScriptEngine(
-            scriptURL: URL(fileURLWithPath: "/nonexistent/highlight.min.js")
+            sourceDirectory: URL(fileURLWithPath: "/nonexistent")
         )
         let text = "let x = 1"
         #expect(await engine.runs(for: text, language: "swift", range: fullRange(text)).isEmpty)

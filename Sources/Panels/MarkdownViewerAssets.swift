@@ -53,7 +53,46 @@ final class MarkdownViewerAssets {
         return source
     }
 
+    /// Returns a bundled asset if present, or `nil` rather than trapping.
+    ///
+    /// ``lazyAsset(name:ext:)`` treats a missing asset as a programming error, which is
+    /// right for the viewer's own scripts — it cannot render without them. Optional
+    /// extras are different: a syntax grammar that is not shipped should degrade the
+    /// affected language to plain text, not take the app down.
+    ///
+    /// - Parameters:
+    ///   - name: File name without extension.
+    ///   - ext: Extension without the dot.
+    /// - Returns: Asset contents, or `nil` when it is not in the bundle.
+    func optionalAsset(name: String, ext: String) -> String? {
+        let key = "\(name).\(ext)"
+        if let cached = lazyCache[key] {
+            return cached
+        }
+        guard let source = MarkdownViewerAssets.loadOptionalAsset(name: name, ext: ext) else {
+            return nil
+        }
+        lazyCache[key] = source
+        return source
+    }
+
     private static func loadAsset(name: String, ext: String) -> String {
+        if let source = loadOptionalAsset(name: name, ext: ext) {
+            return source
+        }
+#if DEBUG
+        NSLog("MarkdownViewerAssets: missing bundled asset \(name).\(ext)")
+#endif
+        preconditionFailure("Missing bundled markdown viewer asset \(name).\(ext)")
+    }
+
+    /// Reads a bundled asset, transparently inflating the build-time `.deflate` form.
+    ///
+    /// Release builds compress every `.js`/`.mjs` under `Resources/markdown-viewer` with
+    /// zlib and delete the original, so looking for the plain file alone finds nothing in
+    /// a real bundle. The uncompressed lookup stays as a fallback for builds where the
+    /// compression step has not run.
+    private static func loadOptionalAsset(name: String, ext: String) -> String? {
         let bundle = Bundle.main
         let compressedCandidates: [URL?] = [
             bundle.url(forResource: name, withExtension: "\(ext).deflate", subdirectory: "markdown-viewer"),
@@ -78,10 +117,7 @@ final class MarkdownViewerAssets {
                 return s
             }
         }
-#if DEBUG
-        NSLog("MarkdownViewerAssets: missing bundled asset \(name).\(ext)")
-#endif
-        preconditionFailure("Missing bundled markdown viewer asset \(name).\(ext)")
+        return nil
     }
 
     private static func localizedStringsJSON() -> String {

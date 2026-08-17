@@ -291,12 +291,18 @@ final class FilePreviewSyntaxHighlightController {
         storage.endEditing()
     }
 
-    /// Removes highlighting so the editor's own theme color takes over again.
+    /// Repaints the document in the theme's body color, dropping any syntax colors.
+    ///
+    /// Paints rather than removes. `removeAttribute(.foregroundColor:)` leaves the storage
+    /// with no color at all, and `NSTextView` then draws its default black — unreadable on a
+    /// dark theme. That is what a file with no known grammar looked like: skipped by the
+    /// gate, stripped of attributes, and never repainted because `applyTheme` had already
+    /// run for that update.
     private func clearAttributes() {
         guard let storage = textView?.textStorage, storage.length > 0 else { return }
         let whole = NSRange(location: 0, length: storage.length)
         storage.beginEditing()
-        storage.removeAttribute(.foregroundColor, range: whole)
+        storage.addAttribute(.foregroundColor, value: palette.color(for: .plain), range: whole)
         storage.endEditing()
     }
 

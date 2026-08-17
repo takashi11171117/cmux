@@ -31,15 +31,17 @@ import JavaScriptCore
 actor FilePreviewHighlightJavaScriptEngine: FilePreviewSyntaxHighlighting {
     private var context: JSContext?
     private var preparationFailed = false
-    private let scriptURL: URL?
+    private let sourceDirectory: URL?
 
     /// Creates an engine. No JavaScript runs until the first ``runs(for:language:range:)``.
     ///
-    /// - Parameter scriptURL: Location of the highlight.js bundle. Defaults to the copy
-    ///   inside the app bundle; tests point it at the checked-in file so they do not
-    ///   depend on which bundle happens to be `main` under the test runner.
-    init(scriptURL: URL? = FilePreviewHighlightJavaScriptEngine.bundledScriptURL) {
-        self.scriptURL = scriptURL
+    /// - Parameter sourceDirectory: Directory holding plain `.js` files. Production passes
+    ///   `nil` and reads through ``MarkdownViewerAssets``: the build compresses every
+    ///   bundled script to `<name>.js.deflate` and **deletes the original**, so looking for
+    ///   `highlight.min.js` inside the app bundle finds nothing. Tests pass the checked-in
+    ///   `Resources/markdown-viewer` directory, where the files are still plain.
+    init(sourceDirectory: URL? = nil) {
+        self.sourceDirectory = sourceDirectory
     }
 
     /// Language grammars vendored next to the core script.
@@ -50,15 +52,27 @@ actor FilePreviewHighlightJavaScriptEngine: FilePreviewSyntaxHighlighting {
     /// is a pbxproj *folder reference*, so new files need no project-file change.
     static let additionalGrammars = ["dart"]
 
-    /// The highlight.js copy shipped for Markdown preview, or `nil` if absent.
-    static var bundledScriptURL: URL? {
-        Bundle.main.url(
-            forResource: "highlight.min", withExtension: "js", subdirectory: "markdown-viewer"
-        )
+    /// Reads one script, from the injected directory in tests or the app bundle otherwise.
+    ///
+    /// The bundle path goes through ``MarkdownViewerAssets`` rather than `Bundle.main.url`
+    /// because that type already inflates the build-time `.deflate` form and caches it, so
+    /// the Markdown viewer and the editor share one copy of the 125 KB script.
+    private func loadSource(name: String) async -> String? {
+        if let sourceDirectory {
+            return try? String(
+                contentsOf: sourceDirectory.appendingPathComponent("\(name).js"), encoding: .utf8
+            )
+        }
+        // `await`, not `MainActor.assumeIsolated`. This type is an actor with its own
+        // executor, so it does not run on the main thread and asserting that it does traps
+        // at runtime (SIGTRAP). The hop happens once per engine, during lazy preparation.
+        return await MainActor.run {
+            MarkdownViewerAssets.shared.optionalAsset(name: name, ext: "js")
+        }
     }
 
     func runs(for text: String, language: String, range: NSRange) async -> [FilePreviewHighlightRun] {
-        guard !text.isEmpty, let context = preparedContext() else { return [] }
+        guard !text.isEmpty, let context = await preparedContext() else { return [] }
 
         let highlight = context.objectForKeyedSubscript("cmuxHighlight")
         guard let highlight, !highlight.isUndefined, !highlight.isNull else { return [] }
@@ -73,13 +87,12 @@ actor FilePreviewHighlightJavaScriptEngine: FilePreviewSyntaxHighlighting {
     ///
     /// A failed preparation is remembered so a broken or missing bundle costs one attempt
     /// rather than one attempt per keystroke.
-    private func preparedContext() -> JSContext? {
+    private func preparedContext() async -> JSContext? {
         if let context { return context }
         guard !preparationFailed else { return nil }
 
         guard
-            let scriptURL,
-            let script = try? String(contentsOf: scriptURL, encoding: .utf8),
+            let script = await loadSource(name: "highlight.min"),
             let created = JSContext()
         else {
             preparationFailed = true
@@ -98,10 +111,8 @@ actor FilePreviewHighlightJavaScriptEngine: FilePreviewSyntaxHighlighting {
         // after the core script because each one calls `hljs.registerLanguage` on the
         // global the core defines. A missing file is skipped rather than fatal: the
         // language then behaves like any other unknown extension and renders plain.
-        let grammarDirectory = scriptURL.deletingLastPathComponent()
         for grammar in Self.additionalGrammars {
-            let grammarURL = grammarDirectory.appendingPathComponent("\(grammar).min.js")
-            guard let source = try? String(contentsOf: grammarURL, encoding: .utf8) else { continue }
+            guard let source = await loadSource(name: "\(grammar).min") else { continue }
             created.evaluateScript(source)
         }
 
