@@ -126,6 +126,15 @@ ENTITLEMENTS="$(mktemp -t afide-entitlements).plist"
 trap 'rm -f "$ENTITLEMENTS"' EXIT
 sed -e "s/__TEAM_ID__/${APPLE_TEAM_ID}/" -e "s/__BUNDLE_ID__/${BUNDLE_ID}/" \
   "$ENTITLEMENTS_TEMPLATE" > "$ENTITLEMENTS"
+
+# No `keychain-access-groups`, and so no embedded.provisionprofile to back it. Upstream ships
+# a profile from a CI secret; without one, that entitlement makes launchd refuse to start the
+# app entirely — "Launch failed", errno 163, with a valid signature and passing notarisation.
+# The fork does not share a keychain group, so the entitlement buys nothing.
+if grep -q "keychain-access-groups" "$ENTITLEMENTS"; then
+  echo "ERROR: keychain-access-groups requires an embedded provisioning profile" >&2
+  exit 1
+fi
 echo "Entitlements prepared for team $APPLE_TEAM_ID"
 
 # --- Build GhosttyKit ---
