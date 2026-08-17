@@ -129,6 +129,12 @@ sed -e "s/__TEAM_ID__/${APPLE_TEAM_ID}/" -e "s/__BUNDLE_ID__/${BUNDLE_ID}/" \
 echo "Entitlements prepared for team $APPLE_TEAM_ID"
 
 # --- Build GhosttyKit ---
+# CMUX_AFIDE_SKIP_BUILD=1 reuses whatever is already in build/. Only for iterating on the
+# signing and publishing half: a full Release build is ~30 minutes, and re-running it to test
+# a one-line change in a later step wastes most of an hour.
+if [[ "${CMUX_AFIDE_SKIP_BUILD:-0}" == "1" ]]; then
+  echo "Reusing existing build (CMUX_AFIDE_SKIP_BUILD=1)"
+else
 echo "Building GhosttyKit..."
 rm -rf GhosttyKit.xcframework ghostty/macos/GhosttyKit.xcframework
 (
@@ -169,6 +175,12 @@ for pair in "CFBundleName:$APP_DISPLAY_NAME" "CFBundleDisplayName:$APP_DISPLAY_N
     || /usr/libexec/PlistBuddy -c "Add :$key string $value" "$APP_PLIST_EARLY"
 done
 echo "Build succeeded ($APP_DISPLAY_NAME, $BUNDLE_ID)"
+fi
+
+if [[ ! -d "$APP_PATH" ]]; then
+  echo "ERROR: no app at $APP_PATH (run without CMUX_AFIDE_SKIP_BUILD first)" >&2
+  exit 1
+fi
 
 HELPER_PATH="$APP_PATH/Contents/Resources/bin/ghostty"
 if [[ ! -x "$HELPER_PATH" ]]; then
@@ -190,7 +202,11 @@ echo "Sparkle feed set to $APPCAST_URL"
 
 # --- Codesign ---
 echo "Codesigning..."
-./scripts/sign-cmux-bundle.sh "$APP_PATH" "$ENTITLEMENTS" "$AFIDE_SIGN_HASH"
+# This fork drops `com.apple.developer.web-browser.public-key-credential`, which cmux itself
+# requires. It is an Apple-granted entitlement, and claiming one the account was never granted
+# is worse than shipping without it; the fork does not use passkeys in its browser surface.
+CMUX_SKIP_WEB_BROWSER_ENTITLEMENT_CHECK=1 \
+  ./scripts/sign-cmux-bundle.sh "$APP_PATH" "$ENTITLEMENTS" "$AFIDE_SIGN_HASH"
 echo "Codesign verified"
 
 # --- Notarize app ---

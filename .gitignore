@@ -76,3 +76,7 @@ tmux-*.log
 
 # Homebrew tap checkout for cmux AFIDE releases (its own repository)
 homebrew-cmux-afide/
+
+# cmux AFIDE release artifacts (published to GitHub Releases, never committed)
+cmux-afide-macos.dmg
+appcast.xml
