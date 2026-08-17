@@ -307,7 +307,9 @@ struct CLISocketPathResolver {
         switch variant {
         case .stable:
             return true
-        case .nightly, .staging, .dev:
+        case .nightly, .staging, .dev, .fork:
+            // Grouped with the other non-stable variants: a fork is a separate app, so an
+            // implicit path that happens to be upstream's default is not one of its own.
             return Self.pathsMatch(requestedPath, defaultPath)
                 || !Self.containsPath(resolvedStableImplicitDefaultPaths(), requestedPath)
         }
@@ -315,7 +317,7 @@ struct CLISocketPathResolver {
 
     private func implicitFallbackCandidatePaths(for variant: SocketPathVariant) -> [String] {
         switch variant {
-        case .stable, .nightly, .staging, .dev:
+        case .stable, .nightly, .staging, .dev, .fork:
             return resolvedStableImplicitDefaultPaths()
         }
     }

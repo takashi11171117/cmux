@@ -56731,23 +56731,6 @@
         }
       }
     },
-    "codeReview.hideColumn": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hide Code Review"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u30b3\u30fc\u30c9\u30ec\u30d3\u30e5\u30fc\u3092\u96a0\u3059"
-          }
-        }
-      }
-    },
     "codeReview.title": {
       "extractionState": "manual",
       "localizations": {
