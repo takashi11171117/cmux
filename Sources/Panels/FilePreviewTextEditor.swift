@@ -131,9 +131,14 @@ struct FilePreviewTextEditor<PanelModel>: NSViewRepresentable where PanelModel: 
         textView.panel = panel
         textView.applyFilePreviewTextEditorInsets()
         textView.applyFilePreviewWordWrap(wordWrap, scrollView: scrollView)
-        scrollView.rulersVisible = lineNumbers
+        // Toggling `rulersVisible` re-lays out the scroll view, so only do it on a real
+        // change; `updateNSView` runs far more often than the setting changes.
+        if scrollView.rulersVisible != lineNumbers {
+            scrollView.rulersVisible = lineNumbers
+        }
         // Wrapping changes which fragments start a logical line, so the ruler has to redraw
-        // even though the text itself did not change.
+        // even though the text itself did not change. Marking it dirty is cheap and does not
+        // disturb layout, unlike the assignments above.
         scrollView.verticalRulerView?.needsDisplay = true
         panel.attachTextView(textView)
         guard textView.string != panel.textContent else { return }
@@ -320,29 +325,51 @@ extension NSTextView {
     /// (`wrap == true`) or the no-wrap baseline with a horizontal scroller
     /// (`wrap == false`). Idempotent, so it is safe to call on every SwiftUI
     /// update; toggling the `fileEditor.wordWrap` setting reflows open editors.
+    /// Applies the wrap mode, doing nothing when nothing changed.
+    ///
+    /// Every assignment here invalidates layout, and `updateNSView` runs on each SwiftUI
+    /// pass — including passes that land mid-scroll. Re-applying identical values then
+    /// resets the text view's frame under the scroller, which reads as the content bouncing
+    /// back and, once the scroll view's idea of the document size goes stale, as the wheel
+    /// no longer scrolling at all. Dragging the scroller keeps working, which is the tell.
+    ///
+    /// - Parameters:
+    ///   - wrap: Whether lines wrap to the visible width.
+    ///   - scrollView: The enclosing scroll view, whose horizontal scroller follows `wrap`.
     func applyFilePreviewWordWrap(_ wrap: Bool, scrollView: NSScrollView) {
         guard let textContainer else { return }
-        scrollView.hasHorizontalScroller = !wrap
-        isHorizontallyResizable = !wrap
+        if scrollView.hasHorizontalScroller != !wrap {
+            scrollView.hasHorizontalScroller = !wrap
+        }
+        if isHorizontallyResizable != !wrap {
+            isHorizontallyResizable = !wrap
+        }
         if wrap {
-            textContainer.widthTracksTextView = true
             // `widthTracksTextView` keeps the container pinned to the text view
             // width, so wrapping is correct even before the scroll view is laid
             // out. Only snap the frame/container to a real measured width to
             // avoid collapsing to a zero-width container during `makeNSView`,
             // before the clip view has a size; `updateNSView` re-runs once laid
             // out and reflows.
+            if !textContainer.widthTracksTextView {
+                textContainer.widthTracksTextView = true
+            }
             let visibleWidth = scrollView.contentSize.width
-            if visibleWidth > 0 {
+            if visibleWidth > 0, textContainer.size.width != visibleWidth {
                 textContainer.size = NSSize(width: visibleWidth, height: .greatestFiniteMagnitude)
                 setFrameSize(NSSize(width: visibleWidth, height: frame.height))
             }
         } else {
-            textContainer.widthTracksTextView = false
-            textContainer.size = NSSize(
+            if textContainer.widthTracksTextView {
+                textContainer.widthTracksTextView = false
+            }
+            let unbounded = NSSize(
                 width: CGFloat.greatestFiniteMagnitude,
                 height: CGFloat.greatestFiniteMagnitude
             )
+            if textContainer.size != unbounded {
+                textContainer.size = unbounded
+            }
         }
     }
 
