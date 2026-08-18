@@ -6542,7 +6542,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         cliURL: URL,
         socketPath: String,
         cwd: String,
-        workspaceId: UUID,
+        workspaceId: UUID?,
         surfaceId: UUID?,
         useLastTurnSource: Bool,
         sessionId: String?,
@@ -6556,9 +6556,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             "diff",
             useLastTurnSource ? "--last-turn" : "--unstaged",
             "--cwd", cwd,
-            "--workspace", workspaceId.uuidString,
             "--focus", focus ? "true" : "false",
         ]
+        if let workspaceId {
+            arguments.append(contentsOf: ["--workspace", workspaceId.uuidString])
+        }
         if let surfaceId {
             arguments.append(contentsOf: ["--surface", surfaceId.uuidString])
         }
@@ -6574,9 +6576,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         var environment = ProcessInfo.processInfo.environment
         environment["CMUX_SOCKET_PATH"] = socketPath
         environment["CMUX_BUNDLED_CLI_PATH"] = cliURL.path
-        environment["CMUX_WORKSPACE_ID"] = workspaceId.uuidString
+        // Set only when given. The CLI falls back to these when the flags are absent, so
+        // leaving the terminal's ids here would undo passing no `--workspace`/`--surface` and
+        // send the column path looking for a source pane again.
+        if let workspaceId {
+            environment["CMUX_WORKSPACE_ID"] = workspaceId.uuidString
+        } else {
+            environment.removeValue(forKey: "CMUX_WORKSPACE_ID")
+        }
         if let surfaceId {
             environment["CMUX_SURFACE_ID"] = surfaceId.uuidString
+        } else {
+            environment.removeValue(forKey: "CMUX_SURFACE_ID")
         }
         environment.removeValue(forKey: "CMUX_SOCKET")
         process.environment = environment
@@ -7021,16 +7032,117 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         )
         let cwd = workspace.resolvedWorkingDirectory()
             ?? FileManager.default.homeDirectoryForCurrentUser.path
+        // Neither workspace nor surface is passed. Those name the pane a diff splits *from*,
+        // and this path does not split — it hands the viewer to the column, which owns its own
+        // workspace. Passing the terminal's ids made the CLI resolve a source pane that has
+        // nothing to do with the destination, and it failed with "Source surface not found".
         return launchDiffViewerProcess(
             cliURL: cliURL,
             socketPath: socketPath,
             cwd: cwd,
-            workspaceId: workspace.id,
-            surfaceId: workspace.focusedPanelId,
+            workspaceId: nil,
+            surfaceId: nil,
             useLastTurnSource: useLastTurnSource,
             sessionId: nil,
             codeReviewColumn: true
         )
+    }
+
+    /// Opens the diff for one file in the code-review column.
+    ///
+    /// `cmux diff` takes no file argument, but it reads a patch from stdin, so a single-file
+    /// patch produced here gives the same viewer scoped to one file.
+    ///
+    /// - Parameters:
+    ///   - filePath: Absolute path of the changed file.
+    ///   - isUntracked: Whether git does not track the file yet. Untracked files produce no
+    ///     output from plain `git diff`, so they need `--no-index` against `/dev/null`.
+    ///   - repositoryRoot: Directory to run git in.
+    /// - Returns: `true` when a patch was produced and handed to the viewer.
+    @discardableResult
+    func openFileDiffInCodeReviewColumn(
+        filePath: String,
+        isUntracked: Bool,
+        repositoryRoot: String
+    ) -> Bool {
+        guard let cliURL = Bundle.main.resourceURL?.appendingPathComponent("bin/cmux"),
+              FileManager.default.isExecutableFile(atPath: cliURL.path) else {
+            return false
+        }
+        guard let patch = Self.singleFilePatch(
+            filePath: filePath,
+            isUntracked: isUntracked,
+            repositoryRoot: repositoryRoot
+        ), !patch.isEmpty else {
+            return false
+        }
+
+        let socketPath = TerminalController.shared.activeSocketPath(
+            preferredPath: SocketControlSettings.socketPath()
+        )
+        let process = Process()
+        process.executableURL = cliURL
+        process.arguments = [
+            "--socket", socketPath,
+            "diff", "-",
+            "--title", (filePath as NSString).lastPathComponent,
+            "--focus", "true",
+            "--code-review-column",
+        ]
+        var environment = ProcessInfo.processInfo.environment
+        environment["CMUX_SOCKET_PATH"] = socketPath
+        environment["CMUX_BUNDLED_CLI_PATH"] = cliURL.path
+        // Same reason as `launchDiffViewerProcess`: these would send the CLI looking for a
+        // source pane to split from, and this path does not split.
+        environment.removeValue(forKey: "CMUX_WORKSPACE_ID")
+        environment.removeValue(forKey: "CMUX_SURFACE_ID")
+        environment.removeValue(forKey: "CMUX_SOCKET")
+        process.environment = environment
+
+        let input = Pipe()
+        process.standardInput = input
+        do {
+            try process.run()
+        } catch {
+            return false
+        }
+        input.fileHandleForWriting.write(Data(patch.utf8))
+        input.fileHandleForWriting.closeFile()
+        return true
+    }
+
+    /// Produces a unified patch covering exactly one file.
+    ///
+    /// - Returns: The patch text, or `nil` when git could not be run.
+    private static func singleFilePatch(
+        filePath: String,
+        isUntracked: Bool,
+        repositoryRoot: String
+    ) -> String? {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.currentDirectoryURL = URL(fileURLWithPath: repositoryRoot)
+        process.arguments = isUntracked
+            // A file git has never seen produces nothing from plain `git diff`; comparing it
+            // against /dev/null is what renders it as an addition.
+            ? ["diff", "--no-index", "--", "/dev/null", filePath]
+            : ["diff", "--", filePath]
+        // `--no-index` reports a difference with exit code 1, which is not a failure here.
+        var environment = ProcessInfo.processInfo.environment
+        environment["GIT_OPTIONAL_LOCKS"] = "0"
+        process.environment = environment
+
+        let output = Pipe()
+        process.standardOutput = output
+        process.standardError = Pipe()
+        do {
+            try process.run()
+        } catch {
+            return nil
+        }
+        let data = output.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        return String(data: data, encoding: .utf8)
     }
 
     /// Opens `url` in the code-review column as a browser surface.

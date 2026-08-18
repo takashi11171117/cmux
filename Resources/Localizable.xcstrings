@@ -148298,6 +148298,23 @@
         }
       }
     },
+    "git.changes.openFileDiff": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open this file's diff"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u3053\u306e\u30d5\u30a1\u30a4\u30eb\u306e\u5dee\u5206\u3092\u958b\u304f"
+          }
+        }
+      }
+    },
     "git.changes.empty": {
       "extractionState": "manual",
       "localizations": {

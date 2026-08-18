@@ -31,7 +31,11 @@ struct GitChangesPanelView: View {
                                 fileName: entry.fileName,
                                 directory: entry.relativeDirectory(from: root),
                                 badge: entry.badge,
-                                badgeColor: Color(nsColor: style.gitColor(for: entry.status))
+                                badgeColor: Color(nsColor: style.gitColor(for: entry.status)),
+                                // A closure, not the store: rows live under a `ForEach`, and
+                                // holding an observable reference there is what brings back
+                                // the spin loop (upstream #2586).
+                                onOpen: { openDiff(for: entry, root: root) }
                             )
                         }
                     }
@@ -40,6 +44,19 @@ struct GitChangesPanelView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// Opens one file's diff in the code-review column.
+    ///
+    /// - Parameters:
+    ///   - entry: The clicked row.
+    ///   - root: Directory the list is rooted at, used as the git working directory.
+    private func openDiff(for entry: GitChangeEntry, root: String) {
+        _ = AppDelegate.shared?.openFileDiffInCodeReviewColumn(
+            filePath: entry.path,
+            isUntracked: entry.status == .untracked,
+            repositoryRoot: root
+        )
     }
 
     /// Change count plus the control that opens the diff.
@@ -104,6 +121,9 @@ private struct GitChangeRow: View {
     let directory: String?
     let badge: String
     let badgeColor: Color
+    let onOpen: () -> Void
+
+    @State private var isHovered = false
 
     var body: some View {
         HStack(spacing: 6) {
@@ -129,6 +149,13 @@ private struct GitChangeRow: View {
         }
         .padding(.horizontal, 10)
         .frame(height: 22)
+        .background(isHovered ? Color.primary.opacity(0.08) : Color.clear)
         .contentShape(Rectangle())
+        .onTapGesture(perform: onOpen)
+        .onHover { isHovered = $0 }
+        .help(String(
+            localized: "git.changes.openFileDiff",
+            defaultValue: "Open this file's diff"
+        ))
     }
 }
