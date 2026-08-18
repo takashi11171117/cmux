@@ -330,9 +330,14 @@ RELEASE_NOTES_URL="https://github.com/${GITHUB_REPO}/releases/tag/${TAG}" \
 
 # An appcast advertising the version the installed app already reports is silently inert:
 # Sparkle fetches it, compares, and offers nothing.
-if ! grep -q "sparkle:shortVersionString=\"$VERSION\"" appcast.xml; then
+# generate_appcast writes these as elements, not attributes.
+if ! grep -q "<sparkle:shortVersionString>$VERSION</sparkle:shortVersionString>" appcast.xml; then
   echo "ERROR: appcast does not advertise $VERSION" >&2
-  grep -oE 'sparkle:shortVersionString="[^"]*"' appcast.xml >&2 || true
+  grep -oE '<sparkle:(short)?[Vv]ersion[^>]*>[^<]*<' appcast.xml >&2 || true
+  exit 1
+fi
+if ! grep -q "<sparkle:version>$VERSION</sparkle:version>" appcast.xml; then
+  echo "ERROR: appcast sparkle:version is not $VERSION" >&2
   exit 1
 fi
 if ! grep -q "sparkle:edSignature" appcast.xml; then

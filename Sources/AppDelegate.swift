@@ -6984,9 +6984,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     /// resolve a pane and surface id.
     ///
     /// - Parameter filePath: File to show.
-    /// - Returns: The editor and the column's workspace, or `nil` when the column is not
-    ///   mounted (no window on screen yet).
-    func openFileInCodeReviewColumn(filePath: String) -> (panel: FilePreviewPanel, workspace: Workspace)? {
+    /// - Returns: The surface and the column's workspace, or `nil` when the column is not
+    ///   mounted (no window on screen yet). The surface is a markdown viewer for `.md` and a
+    ///   text editor otherwise, so callers take `any Panel` rather than one concrete kind.
+    func openFileInCodeReviewColumn(filePath: String) -> (panel: any Panel, workspace: Workspace)? {
         guard let codeReviewPanelState else { return nil }
         guard let panel = codeReviewPanelState.show(filePath: filePath) else { return nil }
         return (panel, codeReviewPanelState.workspace)

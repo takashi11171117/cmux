@@ -66,28 +66,51 @@ final class CodeReviewPanelState: ObservableObject {
     /// how the pane-based path treats a second request for the same path.
     ///
     /// - Parameter filePath: File to show.
-    /// - Returns: The editor showing the file, whether newly opened or already present, or
+    /// - Returns: The surface showing the file, whether newly opened or already present, or
     ///   `nil` if the column has no pane to open it in. Callers driving UI ignore this; the
     ///   socket needs it to report a surface id, since answering "opened" with a null surface
     ///   would break the contract every other open path honours.
     @discardableResult
-    func show(filePath: String) -> FilePreviewPanel? {
+    func show(filePath: String) -> (any Panel)? {
         isVisible = true
 
-        let canonical = (filePath as NSString).resolvingSymlinksInPath
-        for (panelId, panel) in workspace.panels {
-            guard let preview = panel as? FilePreviewPanel else { continue }
-            if (preview.filePath as NSString).resolvingSymlinksInPath == canonical {
-                workspace.focusPanel(panelId)
-                return preview
-            }
+        if let existing = existingSurface(for: filePath) {
+            workspace.focusPanel(existing.id)
+            return existing
         }
 
         // Into the focused pane as another tab, never a split. Splitting on every opened file
         // is what the column exists to avoid; the user splits deliberately, via the tab bar.
         guard let pane = workspace.bonsplitController.focusedPaneId
             ?? workspace.bonsplitController.allPaneIds.first else { return nil }
+
+        // Markdown gets the rendered viewer, everything else the text editor — the same split
+        // the pane-based paths make. Opening `.md` in the plain editor here is what made the
+        // preview appear "sometimes": it depended on which entry point the file came through.
+        if MarkdownPanelFileLinkResolver.isMarkdownPathLike(filePath) {
+            return workspace.newMarkdownSurface(inPane: pane, filePath: filePath, focus: true)
+        }
         return workspace.newFilePreviewSurface(inPane: pane, filePath: filePath, focus: true)
+    }
+
+    /// Returns the surface already showing `filePath`, matching either surface kind.
+    ///
+    /// - Parameter filePath: Path to look for; symlinks are resolved on both sides so the same
+    ///   file reached by different routes counts as one.
+    /// - Returns: The existing surface, or `nil` when the file is not open.
+    private func existingSurface(for filePath: String) -> (any Panel)? {
+        let canonical = (filePath as NSString).resolvingSymlinksInPath
+        for (_, panel) in workspace.panels {
+            let openPath: String?
+            switch panel {
+            case let preview as FilePreviewPanel: openPath = preview.filePath
+            case let markdown as MarkdownPanel: openPath = markdown.filePath
+            default: openPath = nil
+            }
+            guard let openPath else { continue }
+            if (openPath as NSString).resolvingSymlinksInPath == canonical { return panel }
+        }
+        return nil
     }
 
     /// Toggles visibility, without discarding what is open.
