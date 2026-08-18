@@ -178,7 +178,17 @@ if [[ ! -d "$BUILT_APP_PATH" ]]; then
   exit 1
 fi
 
+fi
+
 # --- Rename the bundle and stamp its identity ---
+#
+# Outside the build branch on purpose: with CMUX_AFIDE_SKIP_BUILD=1 the identity still has to
+# be stamped, or a resumed release ships whatever the previous run left behind — which is how
+# a build carrying upstream's version number got published.
+if [[ ! -d "$BUILT_APP_PATH" ]]; then
+  echo "ERROR: no build at $BUILT_APP_PATH (run without CMUX_AFIDE_SKIP_BUILD first)" >&2
+  exit 1
+fi
 rm -rf "$APP_PATH"
 cp -R "$BUILT_APP_PATH" "$APP_PATH"
 APP_PLIST_EARLY="$APP_PATH/Contents/Info.plist"
@@ -196,13 +206,7 @@ if [[ "$STAMPED_VERSION" != "$VERSION" ]]; then
   echo "ERROR: bundle reports $STAMPED_VERSION, expected $VERSION" >&2
   exit 1
 fi
-echo "Build succeeded ($APP_DISPLAY_NAME, $BUNDLE_ID, $VERSION)"
-fi
-
-if [[ ! -d "$APP_PATH" ]]; then
-  echo "ERROR: no app at $APP_PATH (run without CMUX_AFIDE_SKIP_BUILD first)" >&2
-  exit 1
-fi
+echo "Stamped $APP_DISPLAY_NAME ($BUNDLE_ID, $VERSION)"
 
 HELPER_PATH="$APP_PATH/Contents/Resources/bin/ghostty"
 if [[ ! -x "$HELPER_PATH" ]]; then
