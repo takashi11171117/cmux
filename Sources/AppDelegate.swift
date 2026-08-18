@@ -6546,7 +6546,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         surfaceId: UUID?,
         useLastTurnSource: Bool,
         sessionId: String?,
-        focus: Bool = true
+        focus: Bool = true,
+        codeReviewColumn: Bool = false
     ) -> Bool {
         let process = Process()
         process.executableURL = cliURL
@@ -6563,6 +6564,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }
         if useLastTurnSource, let sessionId {
             arguments.append(contentsOf: ["--session", sessionId])
+        }
+        if codeReviewColumn {
+            // Opt-in per call. `cmux diff` typed in a terminal keeps splitting to the right;
+            // only the Git list asks for the column, where repeated opens add tabs.
+            arguments.append("--code-review-column")
         }
         process.arguments = arguments
         var environment = ProcessInfo.processInfo.environment
@@ -6990,6 +6996,54 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     func openFileInCodeReviewColumn(filePath: String) -> (panel: any Panel, workspace: Workspace)? {
         guard let codeReviewPanelState else { return nil }
         guard let panel = codeReviewPanelState.show(filePath: filePath) else { return nil }
+        return (panel, codeReviewPanelState.workspace)
+    }
+
+    /// Opens the working-tree diff for the focused workspace in the code-review column.
+    ///
+    /// Used by the Git sidebar. Goes through the same CLI pipeline as `cmux diff` — the diff
+    /// HTML is produced there, not in the app — with the column requested as the destination.
+    ///
+    /// - Parameters:
+    ///   - source: Which diff to render. Only `unstaged` and `lastTurn` are reachable through
+    ///     the launcher today; the others need the CLI's own flag plumbing.
+    ///   - tabManager: Tab manager whose selected workspace supplies the working directory.
+    /// - Returns: `true` when the CLI was launched.
+    @discardableResult
+    func openDiffInCodeReviewColumn(useLastTurnSource: Bool, for tabManager: TabManager?) -> Bool {
+        guard let workspace = tabManager?.selectedWorkspace,
+              let cliURL = Bundle.main.resourceURL?.appendingPathComponent("bin/cmux"),
+              FileManager.default.isExecutableFile(atPath: cliURL.path) else {
+            return false
+        }
+        let socketPath = TerminalController.shared.activeSocketPath(
+            preferredPath: SocketControlSettings.socketPath()
+        )
+        let cwd = workspace.resolvedWorkingDirectory()
+            ?? FileManager.default.homeDirectoryForCurrentUser.path
+        return launchDiffViewerProcess(
+            cliURL: cliURL,
+            socketPath: socketPath,
+            cwd: cwd,
+            workspaceId: workspace.id,
+            surfaceId: workspace.focusedPanelId,
+            useLastTurnSource: useLastTurnSource,
+            sessionId: nil,
+            codeReviewColumn: true
+        )
+    }
+
+    /// Opens `url` in the code-review column as a browser surface.
+    ///
+    /// The diff viewer is a WebView, so a diff lands in the column the same way a file does.
+    /// Without this every diff opened from the Git list would split the terminal area.
+    ///
+    /// - Parameter url: Diff viewer URL.
+    /// - Returns: The surface and the column's workspace, or `nil` when the column is not
+    ///   mounted (no window on screen yet).
+    func openBrowserInCodeReviewColumn(url: URL) -> (panel: any Panel, workspace: Workspace)? {
+        guard let codeReviewPanelState else { return nil }
+        guard let panel = codeReviewPanelState.showBrowser(url: url) else { return nil }
         return (panel, codeReviewPanelState.workspace)
     }
 

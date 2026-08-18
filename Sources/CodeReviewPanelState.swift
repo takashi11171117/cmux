@@ -56,6 +56,12 @@ final class CodeReviewPanelState: ObservableObject {
         .builtIn(.splitDown)
     ]
 
+    /// Scheme the diff viewer is served on.
+    ///
+    /// Diffs are identified by this rather than by URL because each render gets a new file
+    /// name; see ``showBrowser(url:)``.
+    private static let diffViewerScheme = "cmux-diff-viewer"
+
     static let defaultWidth: CGFloat = 520
     static let minimumWidth: CGFloat = 320
     static let maximumWidth: CGFloat = 1_400
@@ -91,6 +97,46 @@ final class CodeReviewPanelState: ObservableObject {
             return workspace.newMarkdownSurface(inPane: pane, filePath: filePath, focus: true)
         }
         return workspace.newFilePreviewSurface(inPane: pane, filePath: filePath, focus: true)
+    }
+
+    /// Opens `url` in the column as a browser surface, reusing one already showing it.
+    ///
+    /// Used for diffs. They render in a WebView on the `cmux-diff-viewer://` scheme, so the
+    /// column hosts them the same way it hosts a file — as another tab, never a split. Opening
+    /// each diff by splitting is what fills the terminal area with panes, which is the thing
+    /// the column exists to prevent.
+    ///
+    /// - Parameter url: Diff viewer URL, as produced by the `cmux diff` pipeline.
+    /// - Returns: The browser surface, or `nil` when the column has no pane to open it in.
+    @discardableResult
+    func showBrowser(url: URL) -> BrowserPanel? {
+        isVisible = true
+
+        // Matched by scheme, not by exact URL. The CLI writes a fresh
+        // `diff-<timestamp>-<random>-viewer.html` on every invocation, so comparing URLs never
+        // finds the tab already showing a diff and the column fills with one tab per click.
+        // One diff tab, reloaded, is what "open the diff" means here.
+        if url.scheme == Self.diffViewerScheme {
+            for (panelId, panel) in workspace.panels {
+                guard let browser = panel as? BrowserPanel,
+                      browser.currentURL?.scheme == Self.diffViewerScheme else { continue }
+                workspace.focusPanel(panelId)
+                _ = browser.navigate(to: url)
+                return browser
+            }
+        } else {
+            for (panelId, panel) in workspace.panels {
+                guard let browser = panel as? BrowserPanel else { continue }
+                if browser.currentURL == url {
+                    workspace.focusPanel(panelId)
+                    return browser
+                }
+            }
+        }
+
+        guard let pane = workspace.bonsplitController.focusedPaneId
+            ?? workspace.bonsplitController.allPaneIds.first else { return nil }
+        return workspace.newBrowserSurface(inPane: pane, url: url, focus: true)
     }
 
     /// Returns the surface already showing `filePath`, matching either surface kind.

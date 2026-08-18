@@ -164,6 +164,7 @@ extension CMUXCLI {
         var branchBase: String?
         var sessionId: String?
         var source: DiffSource?
+        var codeReviewColumn = false
         var inputs: [String] = []
     }
 
@@ -1023,6 +1024,12 @@ extension CMUXCLI {
             "transparent_background": true,
             "bypass_remote_proxy": true
         ]
+        if parsedArgs.codeReviewColumn {
+            // Opt-in. Typing `cmux diff` in a terminal still splits to the right; only a
+            // caller that asks — the Git sidebar — lands in the column, where repeated opens
+            // add tabs instead of panes.
+            params["code_review_column"] = true
+        }
         params["diff_viewer_token"] = viewer.url.scheme == DiffViewerURLMapper.scheme ? (viewer.url.host ?? "") : (viewer.url.path.split(separator: "/").first.map(String.init) ?? "")
         if viewer.url.scheme == DiffViewerURLMapper.scheme {
             params["diff_viewer_files"] = viewer.allowedFiles.map(\.jsonObject)
@@ -1325,6 +1332,10 @@ extension CMUXCLI {
                     continue
                 case "--no-focus":
                     parsed.noFocus = true
+                    index += 1
+                    continue
+                case "--code-review-column":
+                    parsed.codeReviewColumn = true
                     index += 1
                     continue
                 case "--title":

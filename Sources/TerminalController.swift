@@ -6948,6 +6948,10 @@ class TerminalController {
             url = nil
         }
         let respectExternalOpenRules = v2Bool(params, "respect_external_open_rules") ?? false
+        // Opt-in, not a change of default: `cmux diff` keeps splitting to the right, because
+        // that is what someone typing it in a terminal asked for. Only callers that say so —
+        // the Git list — get the column.
+        let prefersCodeReviewColumn = v2Bool(params, "code_review_column") ?? false
 
         let profileKeys = ["profile", "profile_id", "profile_name"]
         let suppliedProfileKeys = profileKeys.filter { v2HasNonNullParam(params, $0) }
@@ -7144,6 +7148,32 @@ class TerminalController {
             let omnibarVisible = v2Bool(params, "show_omnibar") ?? true
             let transparentBackground = v2Bool(params, "transparent_background") ?? false
             let bypassRemoteProxy = v2Bool(params, "bypass_remote_proxy") ?? v2IsDiffViewerURL(url)
+
+            // Into the code-review column instead of splitting, when asked. Reported through
+            // the same keys as the split path so a caller reads one shape; `placement_strategy`
+            // is what says which happened.
+            if prefersCodeReviewColumn,
+               let resolvedURL = url,
+               let column = AppDelegate.shared?.openBrowserInCodeReviewColumn(url: resolvedURL) {
+                let columnPaneUUID = column.workspace.paneId(forPanelId: column.panel.id)?.id
+                result = .ok([
+                    "window_id": v2OrNull(v2ResolveWindowId(tabManager: tabManager)?.uuidString),
+                    "window_ref": v2Ref(kind: .window, uuid: v2ResolveWindowId(tabManager: tabManager)),
+                    "workspace_id": column.workspace.id.uuidString,
+                    "workspace_ref": v2Ref(kind: .workspace, uuid: column.workspace.id),
+                    "surface_id": column.panel.id.uuidString,
+                    "surface_ref": v2Ref(kind: .surface, uuid: column.panel.id),
+                    "pane_id": v2OrNull(columnPaneUUID?.uuidString),
+                    "pane_ref": v2Ref(kind: .pane, uuid: columnPaneUUID),
+                    "created_split": false,
+                    "placement_strategy": "code_review_column",
+                    "show_omnibar": false,
+                    "transparent_background": transparentBackground,
+                    "bypass_remote_proxy": bypassRemoteProxy,
+                ])
+                return
+            }
+
             let request = BrowserSplitRequest(
                 url: url,
                 focus: focus,

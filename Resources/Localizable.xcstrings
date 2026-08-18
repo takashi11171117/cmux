@@ -148264,6 +148264,40 @@
         }
       }
     },
+    "git.changes.count": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld changed"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld \u4ef6\u5909\u66f4"
+          }
+        }
+      }
+    },
+    "git.changes.openDiff": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open diff in Code Review"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u30b3\u30fc\u30c9\u30ec\u30d3\u30e5\u30fc\u3067\u5dee\u5206\u3092\u958b\u304f"
+          }
+        }
+      }
+    },
     "git.changes.empty": {
       "extractionState": "manual",
       "localizations": {

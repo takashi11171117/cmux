@@ -18,7 +18,9 @@ struct GitChangesPanelView: View {
         // places. A second palette here would make one file look like two different things.
         let style = FileExplorerStyle.current
 
-        Group {
+        VStack(spacing: 0) {
+            header(changeCount: entries.count)
+
             if entries.isEmpty {
                 emptyState
             } else {
@@ -38,6 +40,47 @@ struct GitChangesPanelView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// Change count plus the control that opens the diff.
+    ///
+    /// The button carries no store reference of its own — it calls through `AppDelegate`,
+    /// which is where the CLI pipeline that renders diffs already lives.
+    private func header(changeCount: Int) -> some View {
+        HStack(spacing: 6) {
+            Text(String(
+                localized: "git.changes.count",
+                defaultValue: "\(changeCount) changed"
+            ))
+            .font(.system(size: 11))
+            .foregroundStyle(.secondary)
+
+            Spacer(minLength: 0)
+
+            Button {
+                _ = AppDelegate.shared?.openDiffInCodeReviewColumn(
+                    useLastTurnSource: false,
+                    for: AppDelegate.shared?.tabManager
+                )
+            } label: {
+                Image(systemName: "chevron.left.forwardslash.chevron.right")
+                    .font(.system(size: 11, weight: .medium))
+                    .frame(width: 22, height: 20)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(changeCount == 0)
+            .help(String(
+                localized: "git.changes.openDiff",
+                defaultValue: "Open diff in Code Review"
+            ))
+            .accessibilityLabel(String(
+                localized: "git.changes.openDiff",
+                defaultValue: "Open diff in Code Review"
+            ))
+        }
+        .padding(.horizontal, 10)
+        .frame(height: 26)
     }
 
     private var emptyState: some View {
