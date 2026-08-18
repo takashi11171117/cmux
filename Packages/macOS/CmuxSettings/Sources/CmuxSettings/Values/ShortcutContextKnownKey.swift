@@ -65,7 +65,7 @@ public enum ShortcutContextKnownKey: String, CaseIterable, Sendable {
     public var knownStringValues: [String]? {
         switch self {
         case .sidebarMode:
-            return ["files", "find", "sessions", "feed", "dock"]
+            return ["files", "git", "find", "sessions", "feed", "dock"]
         default:
             return nil
         }
