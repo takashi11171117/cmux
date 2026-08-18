@@ -197,9 +197,11 @@ struct TerminalPanelView: View {
         if let portalPaneOwnershipResolver {
             return portalPaneOwnershipResolver()
         }
+        // `workspaceFor`, not `tabManagerFor`: same reason as the browser's pane-drop context.
+        // A terminal split inside the code-review column would otherwise never own its pane
+        // and the portal would keep its surface detached.
         guard let app = AppDelegate.shared,
-              let manager = app.tabManagerFor(tabId: panel.workspaceId),
-              let workspace = manager.tabs.first(where: { $0.id == panel.workspaceId }),
+              let workspace = app.workspaceFor(workspaceId: panel.workspaceId),
               let livePanel = workspace.panels[panel.id],
               livePanel === panel,
               let currentPane = workspace.paneId(forPanelId: panel.id),

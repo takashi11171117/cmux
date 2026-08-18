@@ -385,6 +385,29 @@ extension AppDelegate {
         return titles
     }
 
+    /// Resolves a workspace by id, wherever it lives.
+    ///
+    /// Panel views resolve their pane ownership through their workspace, and used to reach it
+    /// via ``tabManagerFor(tabId:)`` alone. The code-review column's workspace belongs to no
+    /// `TabManager`, so every such lookup returned `nil`, the portal bind guards never passed,
+    /// and portal-hosted surfaces (browser, terminal) rendered nothing there — a webview with
+    /// no window and a 0×0 frame while its navigation ran normally. This is the one place that
+    /// knows every home a workspace can have; new non-tab-manager workspaces join here, not by
+    /// teaching each panel view another lookup.
+    ///
+    /// - Parameter workspaceId: The workspace's id.
+    /// - Returns: The live workspace, or `nil` when nothing owns it.
+    func workspaceFor(workspaceId: UUID) -> Workspace? {
+        if let manager = tabManagerFor(tabId: workspaceId),
+           let workspace = manager.tabs.first(where: { $0.id == workspaceId }) {
+            return workspace
+        }
+        if let column = codeReviewPanelState?.workspace, column.id == workspaceId {
+            return column
+        }
+        return nil
+    }
+
     /// Returns the `TabManager` that owns `tabId`, if any.
     func tabManagerFor(tabId: UUID) -> TabManager? {
         if let manager = contextContainingTabId(tabId)?.tabManager {

@@ -519,11 +519,11 @@ struct BrowserPanelView: View {
     }
 
     private var owningWorkspace: Workspace? {
-        guard let app = AppDelegate.shared,
-              let manager = app.tabManagerFor(tabId: panel.workspaceId) else {
-            return nil
-        }
-        return manager.tabs.first(where: { $0.id == panel.workspaceId })
+        // `workspaceFor`, not `tabManagerFor`: the code-review column's workspace lives in no
+        // TabManager. A nil here made `isCurrentPaneOwner` false, which zeroed
+        // `shouldAttachWebView`, and the portal then bound the webview as invisible —
+        // geometry correct, `entryVisible=0`, nothing on screen.
+        AppDelegate.shared?.workspaceFor(workspaceId: panel.workspaceId)
     }
 
     private var isCurrentPaneOwner: Bool {
@@ -1923,9 +1923,14 @@ struct BrowserPanelView: View {
     private func isPanelFocusedInModel() -> Bool {
         if let paneOwnershipOverride { return paneOwnershipOverride && isFocused }
         guard let app = AppDelegate.shared,
-              let manager = app.tabManagerFor(tabId: panel.workspaceId),
-              manager.selectedTabId == panel.workspaceId,
-              let workspace = manager.tabs.first(where: { $0.id == panel.workspaceId }) else { return false }
+              let workspace = app.workspaceFor(workspaceId: panel.workspaceId) else { return false }
+        // A tab-manager workspace only counts while its tab is selected. The code-review
+        // column has no tab selection — its workspace is presented whenever the column is —
+        // so for it the focused-panel check alone decides.
+        if let manager = app.tabManagerFor(tabId: panel.workspaceId),
+           manager.selectedTabId != panel.workspaceId {
+            return false
+        }
         return workspace.focusedPanelId == panel.id
     }
 
@@ -7860,9 +7865,11 @@ struct WebViewRepresentable: NSViewRepresentable {
                 paneId: paneId
             )
         }
+        // `workspaceFor`, not `tabManagerFor`: the code-review column's workspace lives in no
+        // TabManager, and a nil here fails every portal-bind guard above — the webview then
+        // never gets parented and renders nothing.
         guard let app = AppDelegate.shared,
-              let manager = app.tabManagerFor(tabId: panel.workspaceId),
-              let workspace = manager.tabs.first(where: { $0.id == panel.workspaceId }),
+              let workspace = app.workspaceFor(workspaceId: panel.workspaceId),
               let resolvedPaneId = workspace.paneId(forPanelId: panel.id) else {
             return nil
         }
