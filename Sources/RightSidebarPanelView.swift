@@ -15,6 +15,12 @@ private func rightSidebarDebugResponder(_ responder: NSResponder?) -> String {
 /// Mode shown in the right sidebar (the panel toggled by ⌘⌥B).
 enum RightSidebarMode: String, CaseIterable, Codable, Sendable {
     case files
+    /// Changed files in the working tree, as a list.
+    ///
+    /// Declared right after ``files`` because the tab strip is built by mapping
+    /// `availableModes()` — itself `allCases.filter` — with no reordering, so declaration
+    /// order is tab order.
+    case git
     case find
     case sessions
     case feed
@@ -24,6 +30,7 @@ enum RightSidebarMode: String, CaseIterable, Codable, Sendable {
     var label: String {
         switch self {
         case .files: return String(localized: "rightSidebar.mode.files", defaultValue: "Files")
+        case .git: return String(localized: "rightSidebar.mode.git", defaultValue: "Git")
         case .find: return String(localized: "rightSidebar.mode.find", defaultValue: "Find")
         case .sessions: return String(localized: "rightSidebar.mode.sessions", defaultValue: "Vault")
         case .feed: return String(localized: "rightSidebar.mode.feed", defaultValue: "Feed")
@@ -35,6 +42,7 @@ enum RightSidebarMode: String, CaseIterable, Codable, Sendable {
     var symbolName: String {
         switch self {
         case .files: return "folder"
+        case .git: return "arrow.triangle.branch"
         case .find: return "magnifyingglass"
         case .sessions: return "books.vertical"
         case .feed: return "dot.radiowaves.left.and.right"
@@ -46,6 +54,10 @@ enum RightSidebarMode: String, CaseIterable, Codable, Sendable {
     var shortcutAction: KeyboardShortcutSettings.Action? {
         switch self {
         case .files: return .switchRightSidebarToFiles
+        // No dedicated shortcut. Every existing binding is spoken for, and adding one would
+        // mean claiming a chord for a mode whose worth is not yet established. The tab and
+        // `cmux right-sidebar git` are enough to reach it.
+        case .git: return nil
         case .find: return .switchRightSidebarToFind
         case .sessions: return .switchRightSidebarToSessions
         case .feed: return .switchRightSidebarToFeed
@@ -56,6 +68,12 @@ enum RightSidebarMode: String, CaseIterable, Codable, Sendable {
 }
 
 extension RightSidebarMode {
+    /// Modes that can be torn out of the sidebar and opened as a pane.
+    ///
+    /// `git` is absent deliberately. The list is a launcher for diffs, which open in the
+    /// code-review column; as a pane it would be a narrow list next to the thing it opens.
+    /// This is a literal, not a `switch`, so adding a case does not fail to compile — a new
+    /// mode is silently non-pane until named here.
     static let paneModes: [RightSidebarMode] = [.files, .find, .sessions]
 
     var canOpenAsPane: Bool {
@@ -73,7 +91,10 @@ enum FileExplorerRootSyncPolicy {
     static func shouldSyncFileExplorerStore(isRightSidebarVisible: Bool, mode: RightSidebarMode) -> Bool {
         guard isRightSidebarVisible else { return false }
         switch mode {
-        case .files, .find:
+        // `git` belongs here: the changed-file list reads `FileExplorerStore.gitStatusByPath`,
+        // and when the store is not synced the root is set to `.none` and no git status is
+        // ever fetched.
+        case .files, .git, .find:
             return true
         case .sessions, .feed, .dock, .customSidebar:
             return false
@@ -385,6 +406,8 @@ struct RightSidebarPanelView: View {
                     onOpenFilePreview: onOpenFilePreview,
                     presentation: .files
                 )
+            case .git:
+                GitChangesPanelView(store: fileExplorerStore)
             case .find:
                 FileExplorerPanelView(
                     store: fileExplorerStore,

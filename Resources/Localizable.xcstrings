@@ -148264,6 +148264,40 @@
         }
       }
     },
+    "git.changes.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No changes"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u5909\u66f4\u306a\u3057"
+          }
+        }
+      }
+    },
+    "rightSidebar.mode.git": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Git"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Git"
+          }
+        }
+      }
+    },
     "rightSidebar.mode.files": {
       "extractionState": "manual",
       "localizations": {

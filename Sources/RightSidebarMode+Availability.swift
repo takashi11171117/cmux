@@ -6,6 +6,8 @@ extension RightSidebarMode {
         switch rawValue.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
         case "files":
             return .files
+        case "git":
+            return .git
         case "find":
             return .find
         case "vault", "sessions":
@@ -39,7 +41,7 @@ extension RightSidebarMode {
 
     func isAvailable(feedEnabled: Bool, dockEnabled: Bool) -> Bool {
         switch self {
-        case .files, .find, .sessions:
+        case .files, .git, .find, .sessions:
             return true
         case .feed:
             return feedEnabled
