@@ -149,14 +149,27 @@ echo "Entitlements prepared for team $APPLE_TEAM_ID"
 if [[ "${CMUX_AFIDE_SKIP_BUILD:-0}" == "1" ]]; then
   echo "Reusing existing build (CMUX_AFIDE_SKIP_BUILD=1)"
 else
-echo "Building GhosttyKit..."
-rm -rf GhosttyKit.xcframework ghostty/macos/GhosttyKit.xcframework
-(
-  cd ghostty
-  zig build -Dcrash-report-subdir="$GHOSTTYKIT_CRASH_REPORT_SUBDIR" -Dsentry=false \
-    -Demit-xcframework=true -Demit-macos-app=false -Dxcframework-target=universal -Doptimize=ReleaseFast
-)
-cp -R ghostty/macos/GhosttyKit.xcframework GhosttyKit.xcframework
+# GhosttyKit is a ReleaseFast zig build of a submodule that changes far less often than this
+# fork's own sources — it took 29 of the 35 minutes of the last full release, to produce a
+# byte-identical framework. Rebuild it only when the submodule commit differs from the one
+# the existing framework was built at, or when asked.
+GHOSTTYKIT_STAMP=".ghosttykit-release-stamp"
+GHOSTTY_COMMIT="$(git -C ghostty rev-parse HEAD 2>/dev/null || echo unknown)"
+if [[ "${CMUX_AFIDE_FORCE_GHOSTTYKIT:-0}" != "1" ]] \
+  && [[ -d GhosttyKit.xcframework ]] \
+  && [[ "$(cat "$GHOSTTYKIT_STAMP" 2>/dev/null)" == "$GHOSTTY_COMMIT" ]]; then
+  echo "Reusing GhosttyKit (ghostty at ${GHOSTTY_COMMIT:0:12})"
+else
+  echo "Building GhosttyKit..."
+  rm -rf GhosttyKit.xcframework ghostty/macos/GhosttyKit.xcframework
+  (
+    cd ghostty
+    zig build -Dcrash-report-subdir="$GHOSTTYKIT_CRASH_REPORT_SUBDIR" -Dsentry=false \
+      -Demit-xcframework=true -Demit-macos-app=false -Dxcframework-target=universal -Doptimize=ReleaseFast
+  )
+  cp -R ghostty/macos/GhosttyKit.xcframework GhosttyKit.xcframework
+  printf '%s' "$GHOSTTY_COMMIT" > "$GHOSTTYKIT_STAMP"
+fi
 
 # --- Build app (Release, unsigned) ---
 #
@@ -164,8 +177,14 @@ cp -R ghostty/macos/GhosttyKit.xcframework GhosttyKit.xcframework
 # target, so the resource bundles and swiftmodules get renamed too and the build fails with
 # "Multiple commands produce .../cmux AFIDE.bundle". The app is renamed after the build
 # instead, the same way scripts/reload.sh does it.
+# Not wiping build/: xcodebuild's own dependency tracking is what makes a source-only change
+# cost minutes instead of half an hour. Pass CMUX_AFIDE_CLEAN_BUILD=1 when a clean room
+# actually matters — a toolchain change, or a suspected stale-artifact problem.
 echo "Building $APP_DISPLAY_NAME..."
-rm -rf build/
+if [[ "${CMUX_AFIDE_CLEAN_BUILD:-0}" == "1" ]]; then
+  echo "  clean build (CMUX_AFIDE_CLEAN_BUILD=1)"
+  rm -rf build/
+fi
 xcodebuild -scheme cmux -configuration Release -derivedDataPath build \
   CODE_SIGNING_ALLOWED=NO \
   PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \

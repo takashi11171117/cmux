@@ -77,6 +77,10 @@ tmux-*.log
 # Homebrew tap checkout for cmux AFIDE releases (its own repository)
 homebrew-cmux-afide/
 
-# cmux AFIDE release artifacts (published to GitHub Releases, never committed)
+# cmux AFIDE release artifacts (published to GitHub Releases, never committed).
+# afide-notary.zip is the notarisation upload — 150MB+, past GitHub's 100MB limit, and
+# `git add -A` picks it up whenever a release is mid-flight.
 cmux-afide-macos.dmg
+afide-notary.zip
 appcast.xml
+.ghosttykit-release-stamp
