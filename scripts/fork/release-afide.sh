@@ -54,6 +54,11 @@ if [[ $# -ne 1 || -z "${1:-}" ]]; then
   exit 1
 fi
 TAG="$1"
+VERSION="${TAG#v}"
+if [[ ! "$VERSION" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
+  echo "ERROR: tag must look like v1.2.3 (got: $TAG)" >&2
+  exit 1
+fi
 
 # --- Pre-flight ---
 SECRETS_FILE="$HOME/.secrets/cmux-afide.env"
@@ -177,13 +182,21 @@ fi
 rm -rf "$APP_PATH"
 cp -R "$BUILT_APP_PATH" "$APP_PATH"
 APP_PLIST_EARLY="$APP_PATH/Contents/Info.plist"
-for pair in "CFBundleName:$APP_DISPLAY_NAME" "CFBundleDisplayName:$APP_DISPLAY_NAME" "CFBundleIdentifier:$BUNDLE_ID"; do
+# Version comes from the tag. Without this the bundle keeps upstream cmux's version, every
+# release claims the same one, and Sparkle never sees an update: the appcast advertises a
+# version the installed app already reports, so it stays silent forever.
+for pair in "CFBundleName:$APP_DISPLAY_NAME" "CFBundleDisplayName:$APP_DISPLAY_NAME" "CFBundleIdentifier:$BUNDLE_ID" "CFBundleShortVersionString:$VERSION" "CFBundleVersion:$VERSION"; do
   key="${pair%%:*}"
   value="${pair#*:}"
   /usr/libexec/PlistBuddy -c "Set :$key $value" "$APP_PLIST_EARLY" 2>/dev/null \
     || /usr/libexec/PlistBuddy -c "Add :$key string $value" "$APP_PLIST_EARLY"
 done
-echo "Build succeeded ($APP_DISPLAY_NAME, $BUNDLE_ID)"
+STAMPED_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP_PLIST_EARLY")
+if [[ "$STAMPED_VERSION" != "$VERSION" ]]; then
+  echo "ERROR: bundle reports $STAMPED_VERSION, expected $VERSION" >&2
+  exit 1
+fi
+echo "Build succeeded ($APP_DISPLAY_NAME, $BUNDLE_ID, $VERSION)"
 fi
 
 if [[ ! -d "$APP_PATH" ]]; then
@@ -218,11 +231,53 @@ CMUX_SKIP_WEB_BROWSER_ENTITLEMENT_CHECK=1 \
   ./scripts/sign-cmux-bundle.sh "$APP_PATH" "$ENTITLEMENTS" "$AFIDE_SIGN_HASH"
 echo "Codesign verified"
 
+# Submits, then polls by submission id. `notarytool --wait` holds one long connection, and
+# when Apple drops it the command exits non-zero even though the submission is queued and
+# progressing — re-running then resubmits from scratch. Polling survives that: the id is
+# printed before any waiting happens, so a dropped connection costs one poll, not a rerun.
+notarize() {
+  local path="$1"
+  local submit_output submission_id status
+  submit_output=$(xcrun notarytool submit "$path" \
+    --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" \
+    --password "$APPLE_APP_SPECIFIC_PASSWORD" 2>&1) || true
+  submission_id=$(printf '%s' "$submit_output" \
+    | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | head -1)
+  if [[ -z "$submission_id" ]]; then
+    echo "$submit_output" >&2
+    echo "ERROR: notarization submit did not return a submission id" >&2
+    return 1
+  fi
+  echo "  submission: $submission_id"
+
+  # ~60 minutes. Apple normally answers within 15; a longer stall is a service problem, and
+  # the id is reported so the wait can be resumed by hand rather than resubmitting.
+  for _ in $(seq 1 120); do
+    status=$(xcrun notarytool info "$submission_id" \
+      --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" \
+      --password "$APPLE_APP_SPECIFIC_PASSWORD" 2>/dev/null \
+      | grep 'status:' | sed 's/.*status: //')
+    case "$status" in
+      Accepted) echo "  accepted"; return 0 ;;
+      Invalid|Rejected)
+        echo "ERROR: notarization $status for $path" >&2
+        xcrun notarytool log "$submission_id" \
+          --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" \
+          --password "$APPLE_APP_SPECIFIC_PASSWORD" 2>/dev/null | head -40 >&2
+        return 1 ;;
+    esac
+    sleep 30
+  done
+
+  echo "ERROR: notarization still pending after 60 minutes" >&2
+  echo "Resume with: xcrun notarytool info $submission_id --apple-id ... --team-id ... --password ..." >&2
+  return 1
+}
+
 # --- Notarize app ---
 echo "Notarizing app..."
 ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" afide-notary.zip
-xcrun notarytool submit afide-notary.zip \
-  --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD" --wait
+notarize afide-notary.zip || exit 1
 xcrun stapler staple "$APP_PATH"
 xcrun stapler validate "$APP_PATH"
 rm -f afide-notary.zip
@@ -234,17 +289,53 @@ echo "Creating DMG..."
 rm -f "$DMG_NAME"
 create-dmg --codesign "$AFIDE_SIGN_HASH" "$DMG_NAME" "$APP_PATH"
 echo "Notarizing DMG..."
-xcrun notarytool submit "$DMG_NAME" \
-  --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD" --wait
+notarize "$DMG_NAME" || exit 1
 xcrun stapler staple "$DMG_NAME"
 xcrun stapler validate "$DMG_NAME"
 echo "DMG notarized"
+
+# --- Launch the signed app once ---
+#
+# Signing, notarisation and Gatekeeper all pass on a bundle that cannot start: a privileged
+# entitlement without a provisioning profile to back it makes launchd refuse the spawn, and
+# every verification command still reports success. v0.1.0 shipped that way. The only check
+# that catches it is starting the thing.
+echo "Launch check..."
+LAUNCH_COPY="$(mktemp -d)/$(basename "$APP_PATH")"
+cp -R "$APP_PATH" "$LAUNCH_COPY"
+open "$LAUNCH_COPY"
+launched=false
+for _ in $(seq 1 15); do
+  if pgrep -f "$LAUNCH_COPY" >/dev/null 2>&1; then launched=true; break; fi
+  sleep 2
+done
+pkill -f "$LAUNCH_COPY" >/dev/null 2>&1 || true
+rm -rf "$(dirname "$LAUNCH_COPY")"
+if [[ "$launched" != "true" ]]; then
+  echo "ERROR: the signed app did not launch; refusing to publish" >&2
+  echo "Check entitlements: privileged ones need an embedded provisioning profile." >&2
+  exit 1
+fi
+echo "  launched and exited cleanly"
 
 # --- Generate Sparkle appcast ---
 echo "Generating appcast..."
 DOWNLOAD_URL_PREFIX="https://github.com/${GITHUB_REPO}/releases/download/${TAG}/" \
 RELEASE_NOTES_URL="https://github.com/${GITHUB_REPO}/releases/tag/${TAG}" \
   ./scripts/sparkle_generate_appcast.sh "$DMG_NAME" "$TAG" appcast.xml
+
+# An appcast advertising the version the installed app already reports is silently inert:
+# Sparkle fetches it, compares, and offers nothing.
+if ! grep -q "sparkle:shortVersionString=\"$VERSION\"" appcast.xml; then
+  echo "ERROR: appcast does not advertise $VERSION" >&2
+  grep -oE 'sparkle:shortVersionString="[^"]*"' appcast.xml >&2 || true
+  exit 1
+fi
+if ! grep -q "sparkle:edSignature" appcast.xml; then
+  echo "ERROR: appcast is missing sparkle:edSignature" >&2
+  exit 1
+fi
+echo "  appcast advertises $VERSION and is signed"
 
 # --- Create GitHub release and upload ---
 if gh release view "$TAG" --repo "$GITHUB_REPO" >/dev/null 2>&1; then
@@ -276,7 +367,6 @@ fi
 gh release view "$TAG" --repo "$GITHUB_REPO"
 
 # --- Update the tap ---
-VERSION="${TAG#v}"
 DMG_SHA256=$(shasum -a 256 "$DMG_NAME" | cut -d' ' -f1)
 CASK_FILE="${TAP_DIR}/Casks/${CASK_TOKEN}.rb"
 
