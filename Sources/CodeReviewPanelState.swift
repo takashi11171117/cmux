@@ -136,7 +136,23 @@ final class CodeReviewPanelState: ObservableObject {
 
         guard let pane = workspace.bonsplitController.focusedPaneId
             ?? workspace.bonsplitController.allPaneIds.first else { return nil }
-        return workspace.newBrowserSurface(inPane: pane, url: url, focus: true)
+
+        // The diff viewer serves its payload over the `cmux-diff-viewer://` scheme from a
+        // `.patch` file beside the HTML. Routed through the remote proxy those requests never
+        // arrive, and the page loads but renders nothing — which is exactly how it failed:
+        // the viewer appeared, ran its loading path, and showed no code. The split path sets
+        // the same two flags; creating the surface directly meant they had to be repeated.
+        let isDiffViewer = url.scheme == Self.diffViewerScheme
+        return workspace.newBrowserSurface(
+            inPane: pane,
+            url: url,
+            focus: true,
+            // `hidden`, not `chromeless`: the address bar stays out of the way but the user
+            // can still bring it back, which is how the split path behaves.
+            chromeVisibility: isDiffViewer ? .hidden : .visible,
+            transparentBackground: isDiffViewer,
+            bypassRemoteProxy: isDiffViewer
+        )
     }
 
     /// Returns the surface already showing `filePath`, matching either surface kind.
