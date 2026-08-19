@@ -2656,6 +2656,23 @@ struct ContentView: View {
 
         let dir = tab.currentDirectory.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !dir.isEmpty else {
+            // A workspace with no directory of its own borrows the group's. Claude/agent
+            // session workspaces often report none, which left the Files and Git tabs empty
+            // while the group's terminal sat in the repository they are all reviewing.
+            // Known limitation: the directory observer watches only the selected workspace,
+            // so a later cwd change in the lending sibling is picked up on the next
+            // selection/mode change, not instantly.
+            if let borrowed = groupDirectoryFallback(for: tab) {
+                sessionIndexStore.setCurrentDirectoryIfChanged(borrowed.path)
+                guard shouldSyncFileExplorerStore else {
+                    fileExplorerStore.applyWorkspaceRoot(.none)
+                    return
+                }
+                fileExplorerStore.applyWorkspaceRoot(
+                    .local(workspaceId: borrowed.workspaceId, path: borrowed.path)
+                )
+                return
+            }
             sessionIndexStore.setCurrentDirectoryIfChanged(nil)
             fileExplorerStore.applyWorkspaceRoot(.none)
             return
@@ -2673,6 +2690,23 @@ struct ContentView: View {
         FileExplorerRootSyncPolicy.shouldSyncFileExplorerStore(
             isRightSidebarVisible: fileExplorerState.isVisible,
             mode: fileExplorerState.mode
+        )
+    }
+
+    /// The directory `tab` borrows from its group when it has none of its own.
+    ///
+    /// Remote-provenance members are excluded: their directories are remote paths, and
+    /// handing one to the local provider would list the wrong machine.
+    private func groupDirectoryFallback(for tab: Workspace) -> (workspaceId: UUID, path: String)? {
+        guard let groupId = tab.groupId else { return nil }
+        let anchorId = tabManager.workspaceGroups.first(where: { $0.id == groupId })?.anchorWorkspaceId
+        let members = tabManager.tabs
+            .filter { $0.groupId == groupId && !$0.usesRemoteDirectoryProvenance }
+            .map { GroupDirectoryFallback.Member(id: $0.id, directory: $0.currentDirectory) }
+        return GroupDirectoryFallback.resolve(
+            anchorWorkspaceId: anchorId,
+            members: members,
+            excluding: tab.id
         )
     }
 
