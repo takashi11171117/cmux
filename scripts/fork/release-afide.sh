@@ -273,27 +273,49 @@ notarize() {
   fi
   echo "  submission: $submission_id"
 
-  # ~60 minutes. Apple normally answers within 15; a longer stall is a service problem, and
-  # the id is reported so the wait can be resumed by hand rather than resubmitting.
-  for _ in $(seq 1 120); do
-    status=$(xcrun notarytool info "$submission_id" \
-      --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" \
-      --password "$APPLE_APP_SPECIFIC_PASSWORD" 2>/dev/null \
-      | grep 'status:' | sed 's/.*status: //')
-    case "$status" in
-      Accepted) echo "  accepted"; return 0 ;;
-      Invalid|Rejected)
-        echo "ERROR: notarization $status for $path" >&2
-        xcrun notarytool log "$submission_id" \
-          --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" \
-          --password "$APPLE_APP_SPECIFIC_PASSWORD" 2>/dev/null | head -40 >&2
-        return 1 ;;
-    esac
-    sleep 30
+  # Individual submissions stall. Observed repeatedly: a submission sits In Progress past an
+  # hour while a fresh submission of the identical file is accepted in about 90 seconds, and a
+  # few-hundred-KB probe comes back in under a minute — so the service is healthy and that one
+  # submission is simply wedged. Waiting longer does not clear it; resubmitting does. 20
+  # minutes is well past Apple's normal turnaround, so a resubmit costs nothing when the first
+  # one was merely slow.
+  for attempt in 1 2 3; do
+    if [[ $attempt -gt 1 ]]; then
+      echo "  no answer after 20 minutes — resubmitting (attempt $attempt/3)"
+      submit_output=$(xcrun notarytool submit "$path" \
+        --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" \
+        --password "$APPLE_APP_SPECIFIC_PASSWORD" 2>&1) || true
+      submission_id=$(printf '%s' "$submit_output" \
+        | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | head -1)
+      if [[ -z "$submission_id" ]]; then
+        echo "$submit_output" >&2
+        echo "ERROR: resubmission did not return a submission id" >&2
+        return 1
+      fi
+      echo "  submission: $submission_id"
+    fi
+
+    for _ in $(seq 1 40); do
+      status=$(xcrun notarytool info "$submission_id" \
+        --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" \
+        --password "$APPLE_APP_SPECIFIC_PASSWORD" 2>/dev/null \
+        | grep 'status:' | sed 's/.*status: //')
+      case "$status" in
+        Accepted) echo "  accepted"; return 0 ;;
+        Invalid|Rejected)
+          echo "ERROR: notarization $status for $path" >&2
+          xcrun notarytool log "$submission_id" \
+            --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD" 2>/dev/null | head -40 >&2
+          return 1 ;;
+      esac
+      sleep 30
+    done
   done
 
-  echo "ERROR: notarization still pending after 60 minutes" >&2
-  echo "Resume with: xcrun notarytool info $submission_id --apple-id ... --team-id ... --password ..." >&2
+  echo "ERROR: notarization pending after 3 submissions (60 minutes total)" >&2
+  echo "The service itself may be down. Probe it with a small signed file before retrying:" >&2
+  echo "  xcrun notarytool info $submission_id --apple-id ... --team-id ... --password ..." >&2
   return 1
 }
 
@@ -389,7 +411,7 @@ if gh release view "$TAG" --repo "$GITHUB_REPO" >/dev/null 2>&1; then
   fi
 else
   gh release create "$TAG" "$DMG_NAME" appcast.xml --repo "$GITHUB_REPO" \
-    --title "$TAG" --notes "cmux AFIDE ${TAG}"
+    --title "$APP_DISPLAY_NAME $TAG" --notes "cmux AFIDE ${TAG}"
 fi
 
 gh release view "$TAG" --repo "$GITHUB_REPO"
