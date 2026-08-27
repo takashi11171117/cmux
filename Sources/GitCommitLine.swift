@@ -81,8 +81,13 @@ struct GitCommitLine: Identifiable, Equatable, Sendable {
     /// for 200 commits from a repository whose branch has 169, then finding `\0\n` occurs
     /// 168 times, one short.
     ///
-    /// The fix: split on `\0` alone and repack six fields at a time. The `\n` bytes then sit
-    /// harmlessly at the start of every non-first field-0 (the sha), so we trim them off.
+    /// The parser splits on the record boundary and only *then* on the field boundary. It
+    /// would be tempting to flatten the whole output on `\0` and take six at a time, and an
+    /// earlier revision did — but a malformed record with too few `\0`s would then bleed
+    /// into the record after it and silently ship a wrong subject. Splitting first on
+    /// `\0\n` (with a fallback for the last, newline-less record) keeps a bad record from
+    /// misaligning its neighbours.
+    ///
     /// Unparseable records are dropped, not thrown, on the assumption that "one bad line"
     /// should not blank the whole tab.
     ///
@@ -90,23 +95,15 @@ struct GitCommitLine: Identifiable, Equatable, Sendable {
     ///   ``GitHistoryCommand/prettyFormat``.
     /// - Returns: Commit lines, in the order git returned them.
     static func parseAll(_ output: String) -> [GitCommitLine] {
-        let fields = output.split(separator: "\u{0}", omittingEmptySubsequences: false).map(String.init)
-        // 6 fields per record; the delimiter at the very end of the output produces one
-        // trailing empty component to discard.
-        var trimmedFields = fields
-        if trimmedFields.last?.isEmpty == true { trimmedFields.removeLast() }
         var lines: [GitCommitLine] = []
-        lines.reserveCapacity(trimmedFields.count / Self.fieldsPerRecord)
-        var index = 0
-        while index + Self.fieldsPerRecord <= trimmedFields.count {
-            // Strip the leading newline that separates records; the very first record starts
-            // clean so `dropFirst` is guarded.
-            var sha = trimmedFields[index]
-            if index > 0, sha.first == "\n" { sha = String(sha.dropFirst()) }
-            let record = ([sha] + trimmedFields[(index + 1)..<(index + Self.fieldsPerRecord)])
-                .joined(separator: "\u{0}")
+        var remaining = output[...]
+        while !remaining.isEmpty {
+            let boundary = remaining.range(of: "\u{0}\n")
+            let recordEnd = boundary?.lowerBound ?? remaining.endIndex
+            let record = String(remaining[remaining.startIndex..<recordEnd])
             if let line = parse(record) { lines.append(line) }
-            index += Self.fieldsPerRecord
+            guard let boundary else { break }
+            remaining = remaining[boundary.upperBound...]
         }
         return lines
     }

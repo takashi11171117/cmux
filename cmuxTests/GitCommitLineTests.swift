@@ -134,4 +134,20 @@ struct GitCommitLineTests {
 
         #expect(lines.map(\.subject) == ["first", "last"])
     }
+
+    @Test("A middle record that is too short does not misalign its successor")
+    func middleRecordShortageDoesNotShiftFollowingRecords() {
+        // Earlier revision flattened everything on NUL and took six fields at a time; a
+        // record short of `\0`s would then swallow the head of the next one and ship a
+        // wrong subject silently. The parser now splits on the record boundary first so a
+        // malformed record dies in isolation.
+        let good = record(subject: "before")
+        let brokenNoDate = record(date: "not-a-date", subject: "corrupt")
+        let after = record(subject: "after")
+        let output = good + "\u{0}\n" + brokenNoDate + "\u{0}\n" + after + "\u{0}"
+
+        let lines = GitCommitLine.parseAll(output)
+
+        #expect(lines.map(\.subject) == ["before", "after"])
+    }
 }
