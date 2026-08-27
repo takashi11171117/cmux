@@ -148417,6 +148417,23 @@
         }
       }
     },
+    "git.history.openCommitDiff": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open this commit's diff"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u3053\u306e\u30b3\u30df\u30c3\u30c8\u306e\u5dee\u5206\u3092\u958b\u304f"
+          }
+        }
+      }
+    },
     "rightSidebar.mode.git": {
       "extractionState": "manual",
       "localizations": {

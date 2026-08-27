@@ -7111,6 +7111,75 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         return true
     }
 
+    /// Renders one commit's patch and hands it to the code-review column.
+    ///
+    /// Same shape as ``openFileDiffInCodeReviewColumn(filePath:isUntracked:repositoryRoot:)``:
+    /// build a patch, pipe it into the bundled `cmux diff -` CLI, land it in the column.
+    /// The patch source is what differs — a whole commit rather than one file's working-tree
+    /// changes.
+    ///
+    /// The trap this path also avoids: `CMUX_WORKSPACE_ID` / `CMUX_SURFACE_ID` /
+    /// `CMUX_SOCKET` in the environment would send the CLI hunting for a pane to split
+    /// from, and this route does not split — it lands as a tab in the column. Stripping
+    /// them here mirrors what `launchDiffViewerProcess` does; CLI-only smoke tests scrub
+    /// these too, so a bug introduced here does not surface until GUI dogfood.
+    ///
+    /// - Parameters:
+    ///   - sha: The commit to render. Any spelling git accepts (full, short, symbolic).
+    ///   - title: What to name the diff tab. Typically the short SHA + subject.
+    ///   - repositoryRoot: Working directory for git.
+    /// - Returns: `true` when a patch was produced and handed to the viewer.
+    @MainActor
+    @discardableResult
+    func openCommitDiffInCodeReviewColumn(
+        sha: String,
+        title: String,
+        repositoryRoot: String
+    ) -> Bool {
+        guard let cliURL = Bundle.main.resourceURL?.appendingPathComponent("bin/cmux"),
+              FileManager.default.isExecutableFile(atPath: cliURL.path) else {
+            return false
+        }
+        let command = GitCommitPatchCommand(sha: sha)
+        guard let patch = Self.gitOutput(arguments: command.arguments, repositoryRoot: repositoryRoot),
+              !patch.isEmpty else {
+            return false
+        }
+
+        let socketPath = TerminalController.shared.activeSocketPath(
+            preferredPath: SocketControlSettings.socketPath()
+        )
+        let process = Process()
+        process.executableURL = cliURL
+        process.arguments = [
+            "--socket", socketPath,
+            "diff", "-",
+            "--title", title,
+            "--focus", "true",
+            "--code-review-column",
+        ]
+        var environment = ProcessInfo.processInfo.environment
+        environment["CMUX_SOCKET_PATH"] = socketPath
+        environment["CMUX_BUNDLED_CLI_PATH"] = cliURL.path
+        // Same reason as `openFileDiffInCodeReviewColumn`: leaving these set would send the
+        // CLI to a source pane to split from, and this path does not split.
+        environment.removeValue(forKey: "CMUX_WORKSPACE_ID")
+        environment.removeValue(forKey: "CMUX_SURFACE_ID")
+        environment.removeValue(forKey: "CMUX_SOCKET")
+        process.environment = environment
+
+        let input = Pipe()
+        process.standardInput = input
+        do {
+            try process.run()
+        } catch {
+            return false
+        }
+        input.fileHandleForWriting.write(Data(patch.utf8))
+        input.fileHandleForWriting.closeFile()
+        return true
+    }
+
     /// Produces a unified patch covering exactly one file.
     ///
     /// - Returns: The patch text, or `nil` when git could not be run.

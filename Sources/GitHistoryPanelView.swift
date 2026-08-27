@@ -18,9 +18,10 @@ struct GitHistoryPanelView: View {
     @StateObject private var history = GitHistoryStore()
 
     var body: some View {
+        let repositoryRoot = store.rootPath.trimmingCharacters(in: .whitespacesAndNewlines)
         VStack(spacing: 0) {
             header(count: history.commits.count)
-            content
+            content(repositoryRoot: repositoryRoot)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         // `body` reads `store.rootPath`; observing it here keeps the `onChange` on a value
@@ -45,19 +46,32 @@ struct GitHistoryPanelView: View {
     }
 
     @ViewBuilder
-    private var content: some View {
+    private func content(repositoryRoot: String) -> some View {
         if history.commits.isEmpty {
             emptyState
         } else {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(history.commits.enumerated()), id: \.element.id) { index, commit in
-                        GitHistoryRow(commit: commit)
-                            .onAppear {
-                                // The row is now on screen; ask the store to preload the
-                                // next page if this is close to the tail.
-                                history.loadNextPageIfNeeded(visibleIndex: index)
+                        GitHistoryRow(
+                            commit: commit,
+                            // A closure, not the store: rows live under `ForEach` and holding
+                            // an observable reference there is what reintroduces upstream
+                            // #2586. `repositoryRoot` is captured by value.
+                            onOpen: {
+                                guard !repositoryRoot.isEmpty else { return }
+                                _ = AppDelegate.shared?.openCommitDiffInCodeReviewColumn(
+                                    sha: commit.sha,
+                                    title: "\(commit.shortSHA)  \(commit.subject)",
+                                    repositoryRoot: repositoryRoot
+                                )
                             }
+                        )
+                        .onAppear {
+                            // The row is now on screen; ask the store to preload the
+                            // next page if this is close to the tail.
+                            history.loadNextPageIfNeeded(visibleIndex: index)
+                        }
                     }
                     if history.isLoading {
                         loadingIndicator
@@ -110,6 +124,7 @@ struct GitHistoryPanelView: View {
 /// this codebase already fixed once (upstream #2586).
 private struct GitHistoryRow: View {
     let commit: GitCommitLine
+    let onOpen: () -> Void
 
     @State private var isHovered = false
 
@@ -141,7 +156,11 @@ private struct GitHistoryRow: View {
         .frame(height: 22)
         .background(isHovered ? Color.primary.opacity(0.08) : Color.clear)
         .contentShape(Rectangle())
+        .onTapGesture(perform: onOpen)
         .onHover { isHovered = $0 }
-        .help(commit.subject)
+        .help(String(
+            localized: "git.history.openCommitDiff",
+            defaultValue: "Open this commit's diff"
+        ))
     }
 }
