@@ -242,7 +242,17 @@ struct FilePreviewSyntaxHighlightControllerTests {
 
         let color = harness.textView.textStorage?
             .attribute(.foregroundColor, at: 0, effectiveRange: nil) as? NSColor
-        #expect(color == nil, "foreground attributes should be removed so the theme takes over")
+        // Painted, not removed. `removeAttribute(.foregroundColor:)` leaves the storage with
+        // no colour at all and `NSTextView` then draws its default black, which is
+        // unreadable on a dark theme — see `clearAttributes()`.
+        #expect(
+            color == FilePreviewHighlightPalette(background: .white, foreground: .black)
+                .color(for: .plain),
+            "the plain colour should be painted back so the theme takes over"
+        )
+        let temporary = harness.textView.layoutManager?
+            .temporaryAttributes(atCharacterIndex: 0, effectiveRange: nil)[.foregroundColor]
+        #expect(temporary == nil, "syntax colours are display state and must not survive")
         controller.detach()
     }
 

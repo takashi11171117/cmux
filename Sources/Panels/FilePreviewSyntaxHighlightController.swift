@@ -253,27 +253,64 @@ final class FilePreviewSyntaxHighlightController {
     }
 
     /// Repaints the baseline plus the visible slice of the cache.
+    ///
+    /// The temporary colours go first: they are keyed by range, so a palette change would
+    /// otherwise leave the previous theme's colours on every range the new pass does not
+    /// happen to cover.
     private func repaintFromCache() {
+        clearTemporaryColors()
         paintPlainBaseline()
         applyVisibleRunsNow()
     }
 
-    /// Applies cached runs for the current viewport.
+    /// Applies cached runs for the current viewport, as display-only temporary attributes.
+    ///
+    /// Not `NSTextStorage.addAttribute`. This runs inside the clip view's bounds-change
+    /// notification, and a storage edit there — attribute-only or not — ends in
+    /// `endEditing()`, which invalidates layout, resizes the text view, and moves the clip
+    /// view's bounds again. That is a feedback loop between scrolling and repainting: the
+    /// document height was measured changing 7952 -> 8334 -> 8262 mid-scroll while the
+    /// scroll position was pinned at 70 pixels and 36 further wheel events moved it not at
+    /// all. Turning highlighting off made the same scroll run smoothly to 1750.
+    ///
+    /// `NSLayoutManager` temporary attributes exist for exactly this: they colour glyphs for
+    /// display without touching the text storage, so nothing is invalidated and the scroll
+    /// is left alone.
     private func applyVisibleRunsNow() {
         guard isEnabled, cachedGeneration == generation, !cachedRuns.isEmpty else { return }
-        guard let textView, let storage = textView.textStorage else { return }
+        guard let textView,
+              let storage = textView.textStorage,
+              let layoutManager = textView.layoutManager
+        else { return }
 
         let documentRange = NSRange(location: 0, length: storage.length)
         let window = NSIntersectionRange(visibleCharacterRange() ?? documentRange, documentRange)
         guard window.length > 0 else { return }
 
-        storage.beginEditing()
         for run in cachedRuns {
             let clamped = NSIntersectionRange(run.range, documentRange)
             guard clamped.length > 0, NSIntersectionRange(clamped, window).length > 0 else { continue }
-            storage.addAttribute(.foregroundColor, value: palette.color(for: run.role), range: clamped)
+            layoutManager.setTemporaryAttributes(
+                [.foregroundColor: palette.color(for: run.role)],
+                forCharacterRange: clamped
+            )
         }
-        storage.endEditing()
+    }
+
+    /// Drops every syntax colour, leaving the storage's own colour showing.
+    ///
+    /// Temporary attributes are display state, so this is what "unhighlight" means now;
+    /// the plain baseline painted into the storage is what remains visible.
+    private func clearTemporaryColors() {
+        guard let textView,
+              let storage = textView.textStorage,
+              let layoutManager = textView.layoutManager,
+              storage.length > 0
+        else { return }
+        layoutManager.removeTemporaryAttribute(
+            .foregroundColor,
+            forCharacterRange: NSRange(location: 0, length: storage.length)
+        )
     }
 
     /// Paints the whole document in the plain color so off-screen text is never left black.
@@ -299,6 +336,7 @@ final class FilePreviewSyntaxHighlightController {
     /// gate, stripped of attributes, and never repainted because `applyTheme` had already
     /// run for that update.
     private func clearAttributes() {
+        clearTemporaryColors()
         guard let storage = textView?.textStorage, storage.length > 0 else { return }
         let whole = NSRange(location: 0, length: storage.length)
         storage.beginEditing()
