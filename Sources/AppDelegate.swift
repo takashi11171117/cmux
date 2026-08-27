@@ -7119,15 +7119,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         isUntracked: Bool,
         repositoryRoot: String
     ) -> String? {
+        let command = GitFilePatchCommand(
+            filePath: filePath,
+            isUntracked: isUntracked,
+            hasHead: hasHead(repositoryRoot: repositoryRoot)
+        )
+        return gitOutput(arguments: command.arguments, repositoryRoot: repositoryRoot)
+    }
+
+    /// Whether the repository has a commit to diff against.
+    ///
+    /// `--verify --quiet` prints the resolved hash and says nothing when there is no `HEAD`,
+    /// so the emptiness of the output is the answer.
+    ///
+    /// - Parameter repositoryRoot: Directory to run git in.
+    /// - Returns: `false` before the first commit, or when git cannot be run.
+    private static func hasHead(repositoryRoot: String) -> Bool {
+        let output = gitOutput(
+            arguments: ["rev-parse", "--verify", "--quiet", "HEAD"],
+            repositoryRoot: repositoryRoot
+        )
+        return !(output ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    /// Runs git and returns its standard output.
+    ///
+    /// The exit status is deliberately ignored: `git diff --no-index` reports a difference with
+    /// exit code 1, and treating that as a failure would drop every untracked file's patch.
+    ///
+    /// - Parameters:
+    ///   - arguments: Arguments to pass to git.
+    ///   - repositoryRoot: Working directory for the process.
+    /// - Returns: Standard output, or `nil` when git could not be launched.
+    private static func gitOutput(arguments: [String], repositoryRoot: String) -> String? {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
         process.currentDirectoryURL = URL(fileURLWithPath: repositoryRoot)
-        process.arguments = isUntracked
-            // A file git has never seen produces nothing from plain `git diff`; comparing it
-            // against /dev/null is what renders it as an addition.
-            ? ["diff", "--no-index", "--", "/dev/null", filePath]
-            : ["diff", "--", filePath]
-        // `--no-index` reports a difference with exit code 1, which is not a failure here.
+        process.arguments = arguments
         var environment = ProcessInfo.processInfo.environment
         environment["GIT_OPTIONAL_LOCKS"] = "0"
         process.environment = environment
