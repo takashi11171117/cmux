@@ -148366,6 +148366,23 @@
         }
       }
     },
+    "git.history.placeholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "History coming soon"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u5c65\u6b74\u306f\u307e\u3082\u306a\u304f\u5b9f\u88c5\u3055\u308c\u307e\u3059"
+          }
+        }
+      }
+    },
     "rightSidebar.mode.git": {
       "extractionState": "manual",
       "localizations": {
@@ -148379,6 +148396,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Git"
+          }
+        }
+      }
+    },
+    "rightSidebar.mode.history": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "History"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u5c65\u6b74"
           }
         }
       }

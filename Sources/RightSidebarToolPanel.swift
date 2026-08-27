@@ -82,8 +82,9 @@ final class RightSidebarToolPanel: Panel, ObservableObject {
         case .sessions:
             guard let store = sessionIndexStoreStorage else { return }
             syncSessionIndexRoot(from: workspace, store: store)
-        // `git` is not in `paneModes`, so this panel is never constructed for it.
-        case .git, .feed, .dock, .customSidebar:
+        // Neither `git` nor `history` is in `paneModes`, so this panel is never
+        // constructed for them.
+        case .git, .history, .feed, .dock, .customSidebar:
             break
         }
     }
@@ -141,7 +142,7 @@ final class RightSidebarToolPanel: Panel, ObservableObject {
             guard let anchor = sessionIndexFocusAnchorView,
                   let window = anchor.window else { return }
             _ = window.makeFirstResponder(anchor)
-        case .git, .feed, .dock, .customSidebar:
+        case .git, .history, .feed, .dock, .customSidebar:
             break
         }
     }
@@ -163,7 +164,7 @@ final class RightSidebarToolPanel: Panel, ObservableObject {
         case .sessions:
             guard sessionIndexFocusAnchorView?.ownsKeyboardFocus(responder) == true else { return nil }
             return .panel
-        case .git, .feed, .dock, .customSidebar:
+        case .git, .history, .feed, .dock, .customSidebar:
             return nil
         }
     }
@@ -295,7 +296,7 @@ struct RightSidebarToolPanelView: View {
                 RightSidebarToolFocusAnchor(onViewChange: panel.attachSessionIndexFocusAnchor)
                     .frame(width: 0, height: 0)
             )
-        case .git, .feed, .dock, .customSidebar:
+        case .git, .history, .feed, .dock, .customSidebar:
             EmptyView()
         }
     }

@@ -21,6 +21,11 @@ enum RightSidebarMode: String, CaseIterable, Codable, Sendable {
     /// `availableModes()` — itself `allCases.filter` — with no reordering, so declaration
     /// order is tab order.
     case git
+    /// Commit history for the working tree's repository.
+    ///
+    /// Sits next to ``git`` because the two share a repository root and users flip between
+    /// "what changed" and "what happened" in the same reading task.
+    case history
     case find
     case sessions
     case feed
@@ -31,6 +36,7 @@ enum RightSidebarMode: String, CaseIterable, Codable, Sendable {
         switch self {
         case .files: return String(localized: "rightSidebar.mode.files", defaultValue: "Files")
         case .git: return String(localized: "rightSidebar.mode.git", defaultValue: "Git")
+        case .history: return String(localized: "rightSidebar.mode.history", defaultValue: "History")
         case .find: return String(localized: "rightSidebar.mode.find", defaultValue: "Find")
         case .sessions: return String(localized: "rightSidebar.mode.sessions", defaultValue: "Vault")
         case .feed: return String(localized: "rightSidebar.mode.feed", defaultValue: "Feed")
@@ -43,6 +49,7 @@ enum RightSidebarMode: String, CaseIterable, Codable, Sendable {
         switch self {
         case .files: return "folder"
         case .git: return "arrow.triangle.branch"
+        case .history: return "clock.arrow.circlepath"
         case .find: return "magnifyingglass"
         case .sessions: return "books.vertical"
         case .feed: return "dot.radiowaves.left.and.right"
@@ -58,6 +65,9 @@ enum RightSidebarMode: String, CaseIterable, Codable, Sendable {
         // mean claiming a chord for a mode whose worth is not yet established. The tab and
         // `cmux right-sidebar git` are enough to reach it.
         case .git: return nil
+        // Same reasoning as `.git`: reachable through the tab and `cmux right-sidebar
+        // history`; taking a chord is not worth it until this mode's worth is established.
+        case .history: return nil
         case .find: return .switchRightSidebarToFind
         case .sessions: return .switchRightSidebarToSessions
         case .feed: return .switchRightSidebarToFeed
@@ -91,10 +101,10 @@ enum FileExplorerRootSyncPolicy {
     static func shouldSyncFileExplorerStore(isRightSidebarVisible: Bool, mode: RightSidebarMode) -> Bool {
         guard isRightSidebarVisible else { return false }
         switch mode {
-        // `git` belongs here: the changed-file list reads `FileExplorerStore.gitStatusByPath`,
-        // and when the store is not synced the root is set to `.none` and no git status is
-        // ever fetched.
-        case .files, .git, .find:
+        // `git` and `history` belong here for the same reason: both read the working
+        // tree's repository root, and without a synced explorer store the root falls back
+        // to `.none` and the panels are always empty.
+        case .files, .git, .history, .find:
             return true
         case .sessions, .feed, .dock, .customSidebar:
             return false
@@ -408,6 +418,8 @@ struct RightSidebarPanelView: View {
                 )
             case .git:
                 GitChangesPanelView(store: fileExplorerStore)
+            case .history:
+                GitHistoryPanelView(store: fileExplorerStore)
             case .find:
                 FileExplorerPanelView(
                     store: fileExplorerStore,

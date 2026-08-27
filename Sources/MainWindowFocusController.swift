@@ -127,9 +127,9 @@ final class MainWindowFocusController {
             fileExplorerHost = host
         case .find:
             fileSearchHost = host
-        // `git` has no FileExplorerContainerView: it renders its own list rather than an
-        // outline view, so there is no host of this kind to register.
-        case .git, .sessions, .feed, .dock, .customSidebar:
+        // `git` and `history` have no FileExplorerContainerView: both render their own
+        // list rather than an outline view, so there is no host of this kind to register.
+        case .git, .history, .sessions, .feed, .dock, .customSidebar:
             break
         }
         focusRegisteredRightSidebarEndpointIfNeeded(mode: mode)
@@ -749,7 +749,7 @@ final class MainWindowFocusController {
             return .outline
         case .find:
             return .searchField
-        case .git, .sessions, .customSidebar:
+        case .git, .history, .sessions, .customSidebar:
             return .host
         case .feed:
             return focusFirstItem ? .firstItem : .host
@@ -767,7 +767,7 @@ final class MainWindowFocusController {
             return fileExplorerHost?.focusOutline() == true
         case .find:
             return fileSearchHost?.focusSearchField() == true
-        case .git, .sessions, .customSidebar:
+        case .git, .history, .sessions, .customSidebar:
             return mode == .customSidebar ? focusFallbackRightSidebarHost() : false
         case .feed:
             if target == .firstItem {
