@@ -1118,6 +1118,7 @@ C0DE71B10000000000000001 /* AppDelegate+AgentChatNotifications.swift in Sources 
 		AF1DE0500000000000000601 /* FilePreviewHighlightPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF1DE0500000000000000602 /* FilePreviewHighlightPolicy.swift */; };
 		AF1DE0500000000000000801 /* FilePreviewHighlightPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF1DE0500000000000000802 /* FilePreviewHighlightPolicyTests.swift */; };
 		AF1DE0500000000000000201 /* FilePreviewHighlightRun.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF1DE0500000000000000202 /* FilePreviewHighlightRun.swift */; };
+		AFGI2106 /* FilePreviewHighlightScrollStabilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFGI2006 /* FilePreviewHighlightScrollStabilityTests.swift */; };
 		AF1DE0500000000000001801 /* FilePreviewHighlightUndoAndTextKitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF1DE0500000000000001802 /* FilePreviewHighlightUndoAndTextKitTests.swift */; };
 		C0DE86520000000000000101 /* FilePreviewImageLoadResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE86520000000000000102 /* FilePreviewImageLoadResult.swift */; };
 		01EE5DC99896BA30240EF1B5 /* FilePreviewImageSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D1450569A797AA7937677D9 /* FilePreviewImageSession.swift */; };
@@ -3953,6 +3954,7 @@ C0DE71B10000000000000002 /* AppDelegate+AgentChatNotifications.swift */ = {isa =
 		AF1DE0500000000000000602 /* FilePreviewHighlightPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels/FilePreviewHighlightPolicy.swift; sourceTree = "<group>"; };
 		AF1DE0500000000000000802 /* FilePreviewHighlightPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilePreviewHighlightPolicyTests.swift; sourceTree = "<group>"; };
 		AF1DE0500000000000000202 /* FilePreviewHighlightRun.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels/FilePreviewHighlightRun.swift; sourceTree = "<group>"; };
+		AFGI2006 /* FilePreviewHighlightScrollStabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilePreviewHighlightScrollStabilityTests.swift; sourceTree = "<group>"; };
 		AF1DE0500000000000001802 /* FilePreviewHighlightUndoAndTextKitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilePreviewHighlightUndoAndTextKitTests.swift; sourceTree = "<group>"; };
 		C0DE86520000000000000102 /* FilePreviewImageLoadResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels/FilePreviewImageLoadResult.swift; sourceTree = "<group>"; };
 		7D1450569A797AA7937677D9 /* FilePreviewImageSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels/FilePreviewImageSession.swift; sourceTree = "<group>"; };
@@ -8246,6 +8248,7 @@ C0DE71B10000000000000002 /* AppDelegate+AgentChatNotifications.swift */ = {isa =
 				AFGI2003 /* GitChangeTreeRowTests.swift */,
 				AFGI2004 /* GitFilePatchCommandTests.swift */,
 				AFGI2005 /* EditorProjectRootTests.swift */,
+				AFGI2006 /* FilePreviewHighlightScrollStabilityTests.swift */,
 				AFGD2001 /* GroupDirectoryFallbackTests.swift */,
 				6042B0026042B0026042B002 /* KeyboardShortcutModifierHoldHintsSettingsFileTests.swift */,
 				D5671102D5671102D5671102 /* TerminalScrollSpeedSettingsFileStoreTests.swift */,
@@ -11430,6 +11433,7 @@ C0DE71B10000000000000002 /* AppDelegate+AgentChatNotifications.swift */ = {isa =
 				AF1DE0500000000000001401 /* FilePreviewHighlightJavaScriptEngineTests.swift in Sources */,
 				AF1DE0500000000000000901 /* FilePreviewHighlightPaletteTests.swift in Sources */,
 				AF1DE0500000000000000801 /* FilePreviewHighlightPolicyTests.swift in Sources */,
+				AFGI2106 /* FilePreviewHighlightScrollStabilityTests.swift in Sources */,
 				AF1DE0500000000000001801 /* FilePreviewHighlightUndoAndTextKitTests.swift in Sources */,
 				C0DE49950000000000000001 /* FilePreviewKindResolverTests.swift in Sources */,
 				AF1DE0500000000000001101 /* FilePreviewLineIndexTests.swift in Sources */,
