@@ -1,5 +1,15 @@
 import Foundation
 
+/// The seam through which the store reads git.
+///
+/// The store depends on this protocol rather than on ``GitHistoryService`` directly, so a
+/// test can replace the real actor with a stub that returns canned pages, without the test
+/// having to shell out to git.
+protocol GitHistoryReading: Sendable {
+    func page(repositoryRoot: String, maxCount: Int, skip: Int) async -> [GitCommitLine]
+    func patch(repositoryRoot: String, sha: String) async -> String?
+}
+
 /// Runs git commands off the main thread for the history sidebar.
 ///
 /// An actor rather than free functions because the constraint is temporal, not stateful:
@@ -15,7 +25,7 @@ import Foundation
 /// standard-output pipe delivers via a callback that would need bridging, and the amount of
 /// output for a page (a few thousand lines) fits comfortably in a single `readDataToEndOfFile`
 /// once the child exits.
-actor GitHistoryService {
+actor GitHistoryService: GitHistoryReading {
     /// Reads one page of the working tree's history.
     ///
     /// - Parameters:
