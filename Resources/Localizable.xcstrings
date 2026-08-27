@@ -148315,6 +148315,40 @@
         }
       }
     },
+    "git.changes.collapseFolder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collapse folder"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u30d5\u30a9\u30eb\u30c0\u3092\u7573\u3080"
+          }
+        }
+      }
+    },
+    "git.changes.expandFolder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expand folder"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u30d5\u30a9\u30eb\u30c0\u3092\u958b\u304f"
+          }
+        }
+      }
+    },
     "git.changes.empty": {
       "extractionState": "manual",
       "localizations": {

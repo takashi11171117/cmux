@@ -1267,6 +1267,10 @@ C0DE71B10000000000000001 /* AppDelegate+AgentChatNotifications.swift in Sources 
 		AFGI1102 /* GitChangeEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFGI1002 /* GitChangeEntry.swift */; };
 		AFGI2102 /* GitChangeEntryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFGI2002 /* GitChangeEntryTests.swift */; };
 		AFGI1101 /* GitChangesPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFGI1001 /* GitChangesPanelView.swift */; };
+		AFGI1103 /* GitChangeTreeRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFGI1003 /* GitChangeTreeRow.swift */; };
+		AFGI2103 /* GitChangeTreeRowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFGI2003 /* GitChangeTreeRowTests.swift */; };
+		AFGI1104 /* GitFilePatchCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFGI1004 /* GitFilePatchCommand.swift */; };
+		AFGI2104 /* GitFilePatchCommandTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFGI2004 /* GitFilePatchCommandTests.swift */; };
 		FE001107 /* GitFileStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE001007 /* GitFileStatus.swift */; };
 		FE001106 /* GitStatusProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE001006 /* GitStatusProvider.swift */; };
 		3865A0023865A0023865A002 /* GlobalSearchCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3865B0023865B0023865B002 /* GlobalSearchCoordinator.swift */; };
@@ -4096,6 +4100,10 @@ C0DE71B10000000000000002 /* AppDelegate+AgentChatNotifications.swift */ = {isa =
 		AFGI1002 /* GitChangeEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitChangeEntry.swift; sourceTree = "<group>"; };
 		AFGI2002 /* GitChangeEntryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitChangeEntryTests.swift; sourceTree = "<group>"; };
 		AFGI1001 /* GitChangesPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitChangesPanelView.swift; sourceTree = "<group>"; };
+		AFGI1003 /* GitChangeTreeRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitChangeTreeRow.swift; sourceTree = "<group>"; };
+		AFGI2003 /* GitChangeTreeRowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitChangeTreeRowTests.swift; sourceTree = "<group>"; };
+		AFGI1004 /* GitFilePatchCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitFilePatchCommand.swift; sourceTree = "<group>"; };
+		AFGI2004 /* GitFilePatchCommandTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitFilePatchCommandTests.swift; sourceTree = "<group>"; };
 		FE001007 /* GitFileStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitFileStatus.swift; sourceTree = "<group>"; };
 		FE001006 /* GitStatusProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusProvider.swift; sourceTree = "<group>"; };
 		3865B0023865B0023865B002 /* GlobalSearchCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Search/GlobalSearchCoordinator.swift; sourceTree = "<group>"; };
@@ -7593,6 +7601,8 @@ C0DE71B10000000000000002 /* AppDelegate+AgentChatNotifications.swift */ = {isa =
 				FE001002 /* FileExplorerView.swift */,
 				FE001007 /* GitFileStatus.swift */,
 				AFGI1002 /* GitChangeEntry.swift */,
+				AFGI1003 /* GitChangeTreeRow.swift */,
+				AFGI1004 /* GitFilePatchCommand.swift */,
 				AFGD1001 /* GroupDirectoryFallback.swift */,
 				FE001006 /* GitStatusProvider.swift */,
 				AFGI1001 /* GitChangesPanelView.swift */,
@@ -8225,6 +8235,8 @@ C0DE71B10000000000000002 /* AppDelegate+AgentChatNotifications.swift */ = {isa =
 				F5996002A1B2C3D4E5F60002 /* FileExplorerShortcutSettingsTests.swift */,
 				AFGI2001 /* RightSidebarGitModeTests.swift */,
 				AFGI2002 /* GitChangeEntryTests.swift */,
+				AFGI2003 /* GitChangeTreeRowTests.swift */,
+				AFGI2004 /* GitFilePatchCommandTests.swift */,
 				AFGD2001 /* GroupDirectoryFallbackTests.swift */,
 				6042B0026042B0026042B002 /* KeyboardShortcutModifierHoldHintsSettingsFileTests.swift */,
 				D5671102D5671102D5671102 /* TerminalScrollSpeedSettingsFileStoreTests.swift */,
@@ -9802,6 +9814,8 @@ C0DE71B10000000000000002 /* AppDelegate+AgentChatNotifications.swift */ = {isa =
 				46814000000000000000000B /* GhosttyTitleUpdateSurfaceState.swift in Sources */,
 				AFGI1102 /* GitChangeEntry.swift in Sources */,
 				AFGI1101 /* GitChangesPanelView.swift in Sources */,
+				AFGI1103 /* GitChangeTreeRow.swift in Sources */,
+				AFGI1104 /* GitFilePatchCommand.swift in Sources */,
 				FE001107 /* GitFileStatus.swift in Sources */,
 				FE001106 /* GitStatusProvider.swift in Sources */,
 					3865A0023865A0023865A002 /* GlobalSearchCoordinator.swift in Sources */,
@@ -11447,6 +11461,8 @@ C0DE71B10000000000000002 /* AppDelegate+AgentChatNotifications.swift */ = {isa =
 				C13519000000000000000003 /* GhosttyTerminalStartupEnvironmentTests.swift in Sources */,
 				D7AB34400000000000000003 /* GhosttyTerminalViewVisibilityPolicyTests.swift in Sources */,
 				AFGI2102 /* GitChangeEntryTests.swift in Sources */,
+				AFGI2103 /* GitChangeTreeRowTests.swift in Sources */,
+				AFGI2104 /* GitFilePatchCommandTests.swift in Sources */,
 				8561A0018561A0018561A001 /* GlobalSearchInputOwnershipTests.swift in Sources */,
 				D5AAB5856FF095F610EB565A /* GlobalSearchShortcutBehaviorTests.swift in Sources */,
 				8561A0068561A0068561A006 /* GlobalSearchShortcutPersistencePolicyTests.swift in Sources */,
