@@ -107,6 +107,27 @@ struct GitCommitLineTests {
         #expect(lines.map(\.subject) == ["one", "two"])
     }
 
+    @Test("Ref labels are extracted with HEAD -> and tag: stripped")
+    func refsAreExtracted() {
+        // Format git prints for a decorated commit at the tip of a branch that also has
+        // a tag: "HEAD -> main, tag: v1.0.4, origin/main".
+        let refs = GitCommitLine.parseRefs("HEAD -> main, tag: v1.0.4, origin/main")
+
+        #expect(refs == ["main", "v1.0.4", "origin/main"])
+    }
+
+    @Test("An undecorated commit has no refs")
+    func undecoratedHasNoRefs() {
+        #expect(GitCommitLine.parseRefs("").isEmpty)
+    }
+
+    @Test("HEAD on its own is dropped")
+    func lonelyHEADIsDropped() {
+        // A detached HEAD prints just "HEAD" — that is a state indicator, not a ref name to
+        // draw as a badge.
+        #expect(GitCommitLine.parseRefs("HEAD").isEmpty)
+    }
+
     @Test("parseAll drops a bad record but keeps its neighbours")
     func parseAllSurvivesOneBadRecord() {
         // Otherwise a single corrupted line kills the whole page, which is the wrong tradeoff

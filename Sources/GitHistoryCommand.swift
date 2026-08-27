@@ -23,7 +23,7 @@ struct GitHistoryCommand: Equatable, Sendable {
     ///
     /// Order: full sha, short sha, parents (space-separated, possibly empty), author name,
     /// authored ISO-strict date, subject (line 1).
-    static let prettyFormat = "%H%x00%h%x00%P%x00%an%x00%aI%x00%s%x00"
+    static let prettyFormat = "%H%x00%h%x00%P%x00%an%x00%aI%x00%s%x00%D%x00"
 
     /// Builds the command for a page.
     ///

@@ -7180,6 +7180,52 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         return true
     }
 
+    /// Writes the history graph to a file-URL and hands it to the code-review column.
+    ///
+    /// URL is stable per repository: `~/Library/Caches/cmux/history-graph/<key>.html`,
+    /// where the key is a filename-safe digest of the repository root. A stable path is
+    /// what lets `CodeReviewPanelState.showBrowser` match the URL exactly and reuse an
+    /// existing tab (Sources/CodeReviewPanelState.swift:127-134) — clicking the graph
+    /// button twice must not open two tabs. Two workspaces on different repositories get
+    /// different files because their roots differ.
+    ///
+    /// - Parameters:
+    ///   - commits: The page to render, newest first.
+    ///   - repositoryRoot: Absolute path used to derive the destination filename.
+    /// - Returns: `true` when the file was written and handed to the column.
+    @MainActor
+    @discardableResult
+    func openHistoryGraphInCodeReviewColumn(
+        commits: [GitCommitLine],
+        repositoryRoot: String
+    ) -> Bool {
+        let nodes = GitGraphLayout.layout(commits)
+        let html = GitGraphRenderer.html(commits: commits, nodes: nodes)
+        let cachesRoot = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSTemporaryDirectory())
+        let directory = cachesRoot
+            .appendingPathComponent("cmux/history-graph", isDirectory: true)
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        } catch {
+            return false
+        }
+        // Filename is a filename-safe digest of the repository path. Not a hash — the raw
+        // path with slashes replaced would collide across similar-looking paths.
+        let slug = repositoryRoot
+            .replacingOccurrences(of: "/", with: "_")
+            .trimmingCharacters(in: CharacterSet(charactersIn: "_"))
+            .prefix(120)
+        let fileURL = directory.appendingPathComponent("\(slug).html")
+        do {
+            try html.write(to: fileURL, atomically: true, encoding: .utf8)
+        } catch {
+            return false
+        }
+        guard let panelState = codeReviewPanelState else { return false }
+        return panelState.showBrowser(url: fileURL) != nil
+    }
+
     /// Produces a unified patch covering exactly one file.
     ///
     /// - Returns: The patch text, or `nil` when git could not be run.

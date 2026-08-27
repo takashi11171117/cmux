@@ -90,7 +90,35 @@ struct GitHistoryPanelView: View {
             ))
             .font(.system(size: 11))
             .foregroundStyle(.secondary)
+
             Spacer(minLength: 0)
+
+            Button {
+                // Snapshot the current page and hand it to the code-review column. The
+                // column reuses the same tab (stable file:// URL per repository root), so
+                // hammering this button does not stack tabs.
+                let repositoryRoot = store.rootPath.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !repositoryRoot.isEmpty else { return }
+                _ = AppDelegate.shared?.openHistoryGraphInCodeReviewColumn(
+                    commits: history.commits,
+                    repositoryRoot: repositoryRoot
+                )
+            } label: {
+                Image(systemName: "chevron.left.forwardslash.chevron.right")
+                    .font(.system(size: 11, weight: .medium))
+                    .frame(width: 22, height: 20)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(count == 0)
+            .help(String(
+                localized: "git.history.openGraph",
+                defaultValue: "Open graph in Code Review"
+            ))
+            .accessibilityLabel(String(
+                localized: "git.history.openGraph",
+                defaultValue: "Open graph in Code Review"
+            ))
         }
         .padding(.horizontal, 10)
         .frame(height: 26)

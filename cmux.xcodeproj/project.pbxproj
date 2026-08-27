@@ -1281,6 +1281,10 @@ C0DE71B10000000000000001 /* AppDelegate+AgentChatNotifications.swift in Sources 
 		AFGI1104 /* GitFilePatchCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFGI1004 /* GitFilePatchCommand.swift */; };
 		AFGI2104 /* GitFilePatchCommandTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFGI2004 /* GitFilePatchCommandTests.swift */; };
 		FE001107 /* GitFileStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE001007 /* GitFileStatus.swift */; };
+		AFGI110E /* GitGraphLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFGI100E /* GitGraphLayout.swift */; };
+		AFGI210C /* GitGraphLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFGI200C /* GitGraphLayoutTests.swift */; };
+		AFGI110F /* GitGraphRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFGI100F /* GitGraphRenderer.swift */; };
+		AFGI210D /* GitGraphRendererTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFGI200D /* GitGraphRendererTests.swift */; };
 		AFGI1108 /* GitHistoryCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFGI1008 /* GitHistoryCommand.swift */; };
 		AFGI2107 /* GitHistoryCommandTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFGI2007 /* GitHistoryCommandTests.swift */; };
 		AFGI1107 /* GitHistoryPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFGI1007 /* GitHistoryPanelView.swift */; };
@@ -4130,6 +4134,10 @@ C0DE71B10000000000000002 /* AppDelegate+AgentChatNotifications.swift */ = {isa =
 		AFGI1004 /* GitFilePatchCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitFilePatchCommand.swift; sourceTree = "<group>"; };
 		AFGI2004 /* GitFilePatchCommandTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitFilePatchCommandTests.swift; sourceTree = "<group>"; };
 		FE001007 /* GitFileStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitFileStatus.swift; sourceTree = "<group>"; };
+		AFGI100E /* GitGraphLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitGraphLayout.swift; sourceTree = "<group>"; };
+		AFGI200C /* GitGraphLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitGraphLayoutTests.swift; sourceTree = "<group>"; };
+		AFGI100F /* GitGraphRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitGraphRenderer.swift; sourceTree = "<group>"; };
+		AFGI200D /* GitGraphRendererTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitGraphRendererTests.swift; sourceTree = "<group>"; };
 		AFGI1008 /* GitHistoryCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHistoryCommand.swift; sourceTree = "<group>"; };
 		AFGI2007 /* GitHistoryCommandTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHistoryCommandTests.swift; sourceTree = "<group>"; };
 		AFGI1007 /* GitHistoryPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHistoryPanelView.swift; sourceTree = "<group>"; };
@@ -7644,6 +7652,8 @@ C0DE71B10000000000000002 /* AppDelegate+AgentChatNotifications.swift */ = {isa =
 				AFGI100B /* GitHistoryService.swift */,
 				AFGI100C /* GitHistoryStore.swift */,
 				AFGI100D /* GitCommitRelativeDate.swift */,
+				AFGI100E /* GitGraphLayout.swift */,
+				AFGI100F /* GitGraphRenderer.swift */,
 				AFGD1001 /* GroupDirectoryFallback.swift */,
 				FE001006 /* GitStatusProvider.swift */,
 				AFGI1001 /* GitChangesPanelView.swift */,
@@ -8285,6 +8295,8 @@ C0DE71B10000000000000002 /* AppDelegate+AgentChatNotifications.swift */ = {isa =
 				AFGI2009 /* GitCommitLineTests.swift */,
 				AFGI200A /* GitHistoryStoreTests.swift */,
 				AFGI200B /* GitCommitRelativeDateTests.swift */,
+				AFGI200C /* GitGraphLayoutTests.swift */,
+				AFGI200D /* GitGraphRendererTests.swift */,
 				AFGD2001 /* GroupDirectoryFallbackTests.swift */,
 				6042B0026042B0026042B002 /* KeyboardShortcutModifierHoldHintsSettingsFileTests.swift */,
 				D5671102D5671102D5671102 /* TerminalScrollSpeedSettingsFileStoreTests.swift */,
@@ -9869,6 +9881,8 @@ C0DE71B10000000000000002 /* AppDelegate+AgentChatNotifications.swift */ = {isa =
 				AFGI110D /* GitCommitRelativeDate.swift in Sources */,
 				AFGI1104 /* GitFilePatchCommand.swift in Sources */,
 				FE001107 /* GitFileStatus.swift in Sources */,
+				AFGI110E /* GitGraphLayout.swift in Sources */,
+				AFGI110F /* GitGraphRenderer.swift in Sources */,
 				AFGI1108 /* GitHistoryCommand.swift in Sources */,
 				AFGI1107 /* GitHistoryPanelView.swift in Sources */,
 				AFGI110B /* GitHistoryService.swift in Sources */,
@@ -11525,6 +11539,8 @@ C0DE71B10000000000000002 /* AppDelegate+AgentChatNotifications.swift */ = {isa =
 				AFGI2108 /* GitCommitPatchCommandTests.swift in Sources */,
 				AFGI210B /* GitCommitRelativeDateTests.swift in Sources */,
 				AFGI2104 /* GitFilePatchCommandTests.swift in Sources */,
+				AFGI210C /* GitGraphLayoutTests.swift in Sources */,
+				AFGI210D /* GitGraphRendererTests.swift in Sources */,
 				AFGI2107 /* GitHistoryCommandTests.swift in Sources */,
 				AFGI210A /* GitHistoryStoreTests.swift in Sources */,
 				8561A0018561A0018561A001 /* GlobalSearchInputOwnershipTests.swift in Sources */,

@@ -50,7 +50,8 @@ struct GitHistoryStoreTests {
             parents: [],
             authorName: "T",
             authoredAt: Date(timeIntervalSince1970: 0),
-            subject: subject
+            subject: subject,
+            refNames: []
         )
     }
 

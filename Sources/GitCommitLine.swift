@@ -26,6 +26,13 @@ struct GitCommitLine: Identifiable, Equatable, Sendable {
     /// Commit subject: the first line of the commit message.
     let subject: String
 
+    /// Branch and tag names attached to this commit, in git's own listing order.
+    ///
+    /// Empty for the common case. `%D` prints something like `HEAD -> main, tag: v1.0.4,
+    /// origin/main`; the parser splits on ", " and strips the `HEAD -> ` and `tag: `
+    /// prefixes so the sidebar draws just the labels.
+    let refNames: [String]
+
     var id: String { sha }
 
     /// Whether the commit has two or more parents.
@@ -63,14 +70,40 @@ struct GitCommitLine: Identifiable, Equatable, Sendable {
         guard !sha.isEmpty, !shortSHA.isEmpty,
               let authoredAt = Self.iso8601Formatter.date(from: fields[4])
         else { return nil }
+        let refNames = Self.parseRefs(fields.count >= 7 ? fields[6] : "")
         return GitCommitLine(
             sha: sha,
             shortSHA: shortSHA,
             parents: parents,
             authorName: authorName,
             authoredAt: authoredAt,
-            subject: fields[5]
+            subject: fields[5],
+            refNames: refNames
         )
+    }
+
+    /// Extracts ref labels from git's `%D` output.
+    ///
+    /// - Parameter raw: `HEAD -> main, tag: v1.0.4, origin/main` style string, or empty.
+    /// - Returns: `[main, v1.0.4, origin/main]` — the labels that decorate the row.
+    static func parseRefs(_ raw: String) -> [String] {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [] }
+        return trimmed
+            .split(separator: ",", omittingEmptySubsequences: true)
+            .map { part -> String in
+                var name = part.trimmingCharacters(in: .whitespaces)
+                // "HEAD -> branch": keep the branch name.
+                if let arrow = name.range(of: "HEAD -> ") {
+                    name.removeSubrange(name.startIndex..<arrow.upperBound)
+                }
+                // "tag: v1.2.3": keep the tag name only.
+                if name.hasPrefix("tag: ") {
+                    name.removeFirst("tag: ".count)
+                }
+                return name
+            }
+            .filter { !$0.isEmpty && $0 != "HEAD" }
     }
 
     /// Parses a page of `git log` output.
