@@ -27,23 +27,30 @@ case find
 
 ## ✅ やること
 
-`docs/fork/git-history/03_詳細設計.md §2.2` の表を上から埋める。
+触る箇所は**6ファイル 13 箇所**。実測済みの一覧は
+`docs/fork/git-history/03_詳細設計.md §2.2`。
 
-- [ ] `label` に「History」
-- [ ] `symbolName` に `clock.arrow.circlepath`
-- [ ] `shortcutAction`
-- [ ] `isAvailable(feedEnabled:dockEnabled:)` を常に true
+**まず case を足してビルドし、コンパイラに残りを教えてもらう。**11 箇所は
+`default` の無い `switch` なのでビルドが止まる。
+
+- [ ] `case history` を `.git` の直後に追加
+- [ ] ビルドを通す（11 箇所がエラーになる）
 - [ ] `FileExplorerRootSyncPolicy.shouldSyncFileExplorerStore` を **true**
-- [ ] `from(cliArgument:)` で `"history"` を受ける
-- [ ] `paneModes` に含めるか決める
+- [ ] `from(cliArgument:)` で `"history"` を受ける ★
+- [ ] `paneModes` は触らない（`.git` も入っていない）★
 - [ ] 空のプレースホルダビュー
 - [ ] ローカライズ（en / ja）
 
 ## ⚠️ 落とし穴
 
-**`from(cliArgument:)` と `paneModes` は `switch` の網羅性で検出されない。**
-`default` があるか配列リテラルのため、case を足してもコンパイルは通り、
-実行時に機能しないだけになる。
+★の2箇所は **`switch` の網羅性で検出されない** `[実測]`。
+
+- `from(cliArgument:)` は `default: return nil` を持つ
+  `[実コード: Sources/RightSidebarMode+Availability.swift:19-20]`
+- `paneModes` は配列リテラル
+  `[実コード: Sources/RightSidebarPanelView.swift:77]`
+
+**足し忘れてもコンパイルは通り、実行時に機能しないだけになる。**
 
 `shouldSyncFileExplorerStore` を false のままにすると、タブを開いてもルートが
 同期されず履歴が常に空になる。

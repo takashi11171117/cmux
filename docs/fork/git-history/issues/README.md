@@ -31,8 +31,9 @@ HIST 01 と 02 は**並行して進められる**。
 
 - **`git show` はマージコミットの差分を既定で抑制する**（0行になる）。
   `--first-parent` を常に付ける。`--root` は不要
-- **`RightSidebarMode` の `from(cliArgument:)` と `paneModes` は
-  `switch` の網羅性で検出されない**。足し忘れてもコンパイルは通る
+- **`RightSidebarMode` の追加は 6 ファイル 13 箇所に及ぶ**。うち 11 箇所は
+  コンパイラが検出するが、`from(cliArgument:)` と `paneModes` の 2 箇所は
+  **足し忘れてもコンパイルが通る**
 - **`CMUX_WORKSPACE_ID` 等を消さないとターミナルが分割される**。
   CLI 単体テストでは再現しない
 - **`Localizable.xcstrings` を JSON として再直列化しない**。差分が万行になる
