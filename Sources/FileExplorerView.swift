@@ -678,7 +678,11 @@ struct FileExplorerPanelView: NSViewRepresentable {
 
         @objc private func contextMenuOpenExternally(_ sender: NSMenuItem) {
             guard let request = sender.representedObject as? FileExplorerExternalOpenRequest else { return }
-            FileExternalOpenAction.open(fileURL: request.fileURL, applicationURL: request.applicationURL)
+            FileExternalOpenAction.open(
+                fileURL: request.fileURL,
+                applicationURL: request.applicationURL,
+                workspaceRoot: store.rootPath
+            )
         }
 
         @objc private func contextMenuRevealInFinder(_ sender: NSMenuItem) {
@@ -1546,7 +1550,11 @@ final class FileExplorerContainerView: NSView {
             coordinator.onOpenFilePreview(path)
             return
         }
-        performFileExplorerFileOpen(path: path, onOpenFilePreview: coordinator.onOpenFilePreview)
+        performFileExplorerFileOpen(
+            path: path,
+            workspaceRoot: coordinator.store.rootPath,
+            onOpenFilePreview: coordinator.onOpenFilePreview
+        )
     }
 
     @objc private func openSelectedSearchResultFromTable(_ sender: NSTableView) {
@@ -1560,7 +1568,11 @@ final class FileExplorerContainerView: NSView {
 
     @objc private func contextMenuOpenSearchResultExternally(_ sender: NSMenuItem) {
         guard let request = sender.representedObject as? FileExplorerExternalOpenRequest else { return }
-        FileExternalOpenAction.open(fileURL: request.fileURL, applicationURL: request.applicationURL)
+        FileExternalOpenAction.open(
+            fileURL: request.fileURL,
+            applicationURL: request.applicationURL,
+            workspaceRoot: coordinator.store.rootPath
+        )
     }
 
     @objc private func contextMenuRevealSearchResultInFinder(_ sender: NSMenuItem) {

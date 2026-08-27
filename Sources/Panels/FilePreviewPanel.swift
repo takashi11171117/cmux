@@ -98,28 +98,94 @@ struct FileExternalOpenApplicationResolver: Sendable {
 
 enum FileExternalOpenAction {
     @discardableResult
-    static func openDefault(fileURL: URL) -> Bool {
+    static func openDefault(fileURL: URL, workspaceRoot: String? = nil) -> Bool {
         let resolver = FileExternalOpenApplicationResolver.live
         guard let defaultURL = resolver.defaultApplicationURL(fileURL) else {
-            return open(fileURL: fileURL, applicationURL: nil)
+            return open(fileURL: fileURL, applicationURL: nil, workspaceRoot: workspaceRoot)
         }
         if resolver.shouldIncludeApplication(defaultURL) {
-            return open(fileURL: fileURL, applicationURL: defaultURL)
+            return open(fileURL: fileURL, applicationURL: defaultURL, workspaceRoot: workspaceRoot)
         }
         let fallbackURL = resolver.applicationURLs(fileURL).first(where: resolver.shouldIncludeApplication)
         guard let fallbackURL else { return false }
-        return open(fileURL: fileURL, applicationURL: fallbackURL)
+        return open(fileURL: fileURL, applicationURL: fallbackURL, workspaceRoot: workspaceRoot)
     }
 
+    /// Opens a file in an external application.
+    ///
+    /// - Parameters:
+    ///   - fileURL: The file to open.
+    ///   - applicationURL: Application to open it with, or `nil` for the system default.
+    ///   - workspaceRoot: Directory the caller's file explorer is rooted at, when it has one.
+    ///     Used only to work out which project the file belongs to.
     @discardableResult
-    static func open(fileURL: URL, applicationURL: URL?) -> Bool {
+    static func open(fileURL: URL, applicationURL: URL?, workspaceRoot: String? = nil) -> Bool {
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.createsNewApplicationInstance = false
-        if let applicationURL {
-            NSWorkspace.shared.open([fileURL], withApplicationAt: applicationURL, configuration: configuration)
-            return true
+        guard let applicationURL else {
+            return NSWorkspace.shared.open(fileURL)
         }
-        return NSWorkspace.shared.open(fileURL)
+        NSWorkspace.shared.open(
+            openedURLs(fileURL: fileURL, applicationURL: applicationURL, workspaceRoot: workspaceRoot),
+            withApplicationAt: applicationURL,
+            configuration: configuration
+        )
+        return true
+    }
+
+    /// The file, preceded by the project it belongs to when the editor understands one.
+    ///
+    /// A lone file handed to VS Code opens as a single tab with no sibling files, no search and
+    /// no symbol index. Passing the project directory first is what makes it a workspace with
+    /// the file open inside it.
+    private static func openedURLs(
+        fileURL: URL,
+        applicationURL: URL,
+        workspaceRoot: String?
+    ) -> [URL] {
+        guard ProjectOpeningEditor.live.opensFolderAsProject(applicationURL: applicationURL) else {
+            return [fileURL]
+        }
+        let filePath = fileURL.path(percentEncoded: false)
+        let candidates = [gitRepositoryRoot(forFileAt: filePath), workspaceRoot].compactMap { $0 }
+        guard let project = EditorProjectRoot(filePath: filePath, candidates: candidates) else {
+            return [fileURL]
+        }
+        return [URL(fileURLWithPath: project.path, isDirectory: true), fileURL]
+    }
+
+    /// The root of the git repository containing a file, if it is in one.
+    ///
+    /// Run synchronously, on a menu click, the same way the diff pipeline already shells out to
+    /// git: `rev-parse` is a single stat-bound call, and doing it asynchronously would mean the
+    /// editor launches before it is known what to launch it with.
+    ///
+    /// - Parameter filePath: Absolute path of the file.
+    /// - Returns: The repository root, or `nil` when the file is not tracked by git or git could
+    ///   not be run.
+    private static func gitRepositoryRoot(forFileAt filePath: String) -> String? {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.currentDirectoryURL = URL(fileURLWithPath: filePath).deletingLastPathComponent()
+        process.arguments = ["rev-parse", "--show-toplevel"]
+        var environment = ProcessInfo.processInfo.environment
+        environment["GIT_OPTIONAL_LOCKS"] = "0"
+        process.environment = environment
+
+        let output = Pipe()
+        process.standardOutput = output
+        process.standardError = Pipe()
+        do {
+            try process.run()
+        } catch {
+            return nil
+        }
+        let data = output.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else { return nil }
+        let root = String(decoding: data, as: UTF8.self)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return root.isEmpty ? nil : root
     }
 
     static func revealInFinder(fileURL: URL) {

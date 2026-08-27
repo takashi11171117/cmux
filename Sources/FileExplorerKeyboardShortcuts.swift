@@ -3,8 +3,18 @@ import CmuxSettings
 import CmuxWorkspaces
 
 /// Perform the configured action for opening a local file from the file explorer.
+///
+/// - Parameters:
+///   - path: Absolute path of the file to open.
+///   - workspaceRoot: Directory the explorer is rooted at, so an editor that opens folders as
+///     projects is handed the project rather than the bare file.
+///   - onOpenFilePreview: Opens the file in cmux's own preview instead.
 @MainActor
-func performFileExplorerFileOpen(path: String, onOpenFilePreview: (String) -> Void) {
+func performFileExplorerFileOpen(
+    path: String,
+    workspaceRoot: String?,
+    onOpenFilePreview: (String) -> Void
+) {
     let action = FileExplorerDoubleClickActionSettings.resolvedAction()
     let hasPreferredEditor = PreferredEditorSettingsStore(defaults: .standard).resolvedCommand != nil
     switch FileExplorerDoubleClickActionSettings.fileActivation(
@@ -14,7 +24,7 @@ func performFileExplorerFileOpen(path: String, onOpenFilePreview: (String) -> Vo
     case .preview:
         onOpenFilePreview(path)
     case .defaultEditor:
-        FileExternalOpenAction.openDefault(fileURL: URL(fileURLWithPath: path))
+        FileExternalOpenAction.openDefault(fileURL: URL(fileURLWithPath: path), workspaceRoot: workspaceRoot)
     case .preferredEditor:
         PreferredEditorService(defaults: .standard).open(URL(fileURLWithPath: path))
     }
@@ -44,7 +54,11 @@ extension FileExplorerPanelView.Coordinator {
             onOpenFilePreview(node.path)
             return
         }
-        performFileExplorerFileOpen(path: node.path, onOpenFilePreview: onOpenFilePreview)
+        performFileExplorerFileOpen(
+            path: node.path,
+            workspaceRoot: store.rootPath,
+            onOpenFilePreview: onOpenFilePreview
+        )
     }
 }
 
