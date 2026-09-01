@@ -177,6 +177,9 @@ final class FileExplorerNode: Identifiable {
     var children: [FileExplorerNode]?
     var isLoading: Bool = false
     var error: String?
+    /// Whether `git check-ignore` reports this path as ignored. Rendered as reduced
+    /// opacity in the cell — VS Code style. Nil-effectively-`false` for non-git roots.
+    var isIgnored: Bool = false
 
     init(name: String, path: String, isDirectory: Bool) {
         self.id = path
@@ -261,10 +264,18 @@ final class LocalFileExplorerProvider: FileExplorerProvider {
     var homePath: String { NSHomeDirectory() }
     var isAvailable: Bool { true }
 
+    /// Names hidden regardless of the show-hidden toggle.
+    ///
+    /// `.DS_Store` is macOS scratch metadata the file system silently manages; it never
+    /// belongs in an IDE tree. Matches how VS Code excludes it via `files.exclude` by
+    /// default. Kept as a small set so future OS scratch files can join without ceremony.
+    static let alwaysHiddenNames: Set<String> = [".DS_Store"]
+
     func listDirectory(path: String, showHidden: Bool) async throws -> [FileExplorerEntry] {
         let fm = FileManager.default
         let contents = try fm.contentsOfDirectory(atPath: path)
         return contents.compactMap { name in
+            if Self.alwaysHiddenNames.contains(name) { return nil }
             guard showHidden || !name.hasPrefix(".") else { return nil }
             let fullPath = (path as NSString).appendingPathComponent(name)
             var isDir: ObjCBool = false
@@ -753,6 +764,7 @@ final class FileExplorerStore: ObservableObject {
     private var remoteHomeResolutionKey: String?
 
     private let gitStatusProvider: GitStatusProvider
+    private let gitIgnoreProbe = GitIgnoreProbe()
 
     init(gitStatusProvider: GitStatusProvider = GitStatusProvider()) {
         self.gitStatusProvider = gitStatusProvider
@@ -849,6 +861,31 @@ final class FileExplorerStore: ObservableObject {
                 DispatchQueue.main.async { [weak self] in
                     self?.gitStatusByPath = status
                 }
+            }
+        }
+    }
+
+    /// Marks children reported by `git check-ignore` as ignored, so the cell can render
+    /// them at reduced opacity — same convention as VS Code. Non-git roots and SSH
+    /// providers get an empty answer and the pass is effectively a no-op.
+    ///
+    /// - Parameter children: Nodes just materialized by ``loadChildren(for:at:silent:)``.
+    private func applyGitIgnore(to children: [FileExplorerNode]) {
+        guard provider is LocalFileExplorerProvider,
+              !rootPath.isEmpty,
+              !children.isEmpty else { return }
+        let paths = children.map(\.path)
+        let root = rootPath
+        let probe = gitIgnoreProbe
+        Task { [weak self] in
+            let ignored = await probe.ignoredPaths(repositoryRoot: root, paths: paths)
+            guard !ignored.isEmpty else { return }
+            await MainActor.run { [weak self] in
+                guard let self else { return }
+                for child in children where ignored.contains(child.path) {
+                    child.isIgnored = true
+                }
+                self.objectWillChange.send()
             }
         }
     }
@@ -1060,6 +1097,7 @@ final class FileExplorerStore: ObservableObject {
                 return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
             }
 
+            applyGitIgnore(to: children)
             if let parentNode {
                 parentNode.children = children
                 parentNode.isLoading = false

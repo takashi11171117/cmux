@@ -1292,6 +1292,7 @@ C0DE71B10000000000000001 /* AppDelegate+AgentChatNotifications.swift in Sources 
 		AFGI110B /* GitHistoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFGI100B /* GitHistoryService.swift */; };
 		AFGI110C /* GitHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFGI100C /* GitHistoryStore.swift */; };
 		AFGI210A /* GitHistoryStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFGI200A /* GitHistoryStoreTests.swift */; };
+		AFGI1111 /* GitIgnoreProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFGI1011 /* GitIgnoreProbe.swift */; };
 		FE001106 /* GitStatusProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE001006 /* GitStatusProvider.swift */; };
 		3865A0023865A0023865A002 /* GlobalSearchCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3865B0023865B0023865B002 /* GlobalSearchCoordinator.swift */; };
 		3865A0073865A0073865A007 /* GlobalSearchDocuments.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3865B0073865B0073865B007 /* GlobalSearchDocuments.swift */; };
@@ -4146,6 +4147,7 @@ C0DE71B10000000000000002 /* AppDelegate+AgentChatNotifications.swift */ = {isa =
 		AFGI100B /* GitHistoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHistoryService.swift; sourceTree = "<group>"; };
 		AFGI100C /* GitHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHistoryStore.swift; sourceTree = "<group>"; };
 		AFGI200A /* GitHistoryStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHistoryStoreTests.swift; sourceTree = "<group>"; };
+		AFGI1011 /* GitIgnoreProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitIgnoreProbe.swift; sourceTree = "<group>"; };
 		FE001006 /* GitStatusProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusProvider.swift; sourceTree = "<group>"; };
 		3865B0023865B0023865B002 /* GlobalSearchCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Search/GlobalSearchCoordinator.swift; sourceTree = "<group>"; };
 		3865B0073865B0073865B007 /* GlobalSearchDocuments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Search/GlobalSearchDocuments.swift; sourceTree = "<group>"; };
@@ -7657,6 +7659,7 @@ C0DE71B10000000000000002 /* AppDelegate+AgentChatNotifications.swift */ = {isa =
 				AFGI100E /* GitGraphLayout.swift */,
 				AFGI100F /* GitGraphRenderer.swift */,
 				AFGI1010 /* FilePreviewWebRenderable.swift */,
+				AFGI1011 /* GitIgnoreProbe.swift */,
 				AFGD1001 /* GroupDirectoryFallback.swift */,
 				FE001006 /* GitStatusProvider.swift */,
 				AFGI1001 /* GitChangesPanelView.swift */,
@@ -9891,6 +9894,7 @@ C0DE71B10000000000000002 /* AppDelegate+AgentChatNotifications.swift */ = {isa =
 				AFGI1107 /* GitHistoryPanelView.swift in Sources */,
 				AFGI110B /* GitHistoryService.swift in Sources */,
 				AFGI110C /* GitHistoryStore.swift in Sources */,
+				AFGI1111 /* GitIgnoreProbe.swift in Sources */,
 				FE001106 /* GitStatusProvider.swift in Sources */,
 					3865A0023865A0023865A002 /* GlobalSearchCoordinator.swift in Sources */,
 				3865A0073865A0073865A007 /* GlobalSearchDocuments.swift in Sources */,

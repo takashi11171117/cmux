@@ -111,6 +111,9 @@ final class FileExplorerCellView: NSTableCellView, NSTextFieldDelegate {
     func configure(with node: FileExplorerNode, gitStatus: GitFileStatus? = nil) {
         assert(Thread.isMainThread, "AppKit image updates must run on the main thread")
         let style = FileExplorerStyle.current
+        // Ignored rows render at half opacity — VS Code convention. The rest of the row
+        // (icon, spinner) inherits via `alphaValue` on the whole cell.
+        alphaValue = node.isIgnored ? 0.45 : 1.0
         nameLabel.stringValue = node.name
         nameLabel.font = style.nameFont
         iconWidthConstraint.constant = style.iconSize
