@@ -1607,6 +1607,24 @@ struct FilePreviewPanelView: View {
                 action: { panel.reloadFromDisk() }
             )
 
+            // Web-renderable files carry a second reading: HTML wants to be *seen*, not read
+            // as markup. The button opens the file as a `file://` page in the code-review
+            // column, next to the source view the panel already provides. Same file, two
+            // views, no config screen.
+            if FilePreviewWebRenderable.canRender(fileURL: panel.fileURL) {
+                PanelHeaderIconButton(
+                    systemName: "globe",
+                    label: String(
+                        localized: "filePreview.openRendered",
+                        defaultValue: "Open Rendered"
+                    ),
+                    isDisabled: panel.isFileUnavailable,
+                    action: {
+                        _ = AppDelegate.shared?.openFileInBrowserSurface(fileURL: panel.fileURL)
+                    }
+                )
+            }
+
             FileExternalOpenMenu(
                 fileURL: panel.fileURL,
                 isDisabled: panel.isFileUnavailable,

@@ -7226,6 +7226,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         return panelState.showBrowser(url: fileURL) != nil
     }
 
+    /// Opens a local file as a page in the code-review column's WebView.
+    ///
+    /// Used by the "Open Rendered" button on the file preview header — HTML and SVG have a
+    /// second reading that plain text cannot show. Same stable-URL tab-reuse pattern as the
+    /// history graph: `showBrowser` matches the file URL exactly, so opening the same file
+    /// twice does not stack tabs.
+    ///
+    /// - Parameter fileURL: File to render.
+    /// - Returns: `true` when the browser surface was created.
+    @MainActor
+    @discardableResult
+    func openFileInBrowserSurface(fileURL: URL) -> Bool {
+        guard fileURL.isFileURL,
+              FileManager.default.fileExists(atPath: fileURL.path(percentEncoded: false)) else {
+            return false
+        }
+        guard let panelState = codeReviewPanelState else { return false }
+        return panelState.showBrowser(url: fileURL) != nil
+    }
+
     /// Produces a unified patch covering exactly one file.
     ///
     /// - Returns: The patch text, or `nil` when git could not be run.
@@ -17041,7 +17061,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
 
     private func canCurrentShortcutPreventStaleMenuSuppression(_ action: KeyboardShortcutSettings.Action) -> Bool {
-        action != .fileExplorerOpenSelection && action != .fileExplorerOpenSelectionFinderAlias
+        action != .fileExplorerOpenSelection && action != .fileExplorerOpenSelectionFinderAlias && action != .fileExplorerRenameSelection
     }
 
     private func isCloseShortcutAction(_ action: KeyboardShortcutSettings.Action) -> Bool {

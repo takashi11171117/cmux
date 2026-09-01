@@ -118765,6 +118765,23 @@
         }
       }
     },
+    "filePreview.openRendered": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Rendered"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u30ec\u30f3\u30c0\u30ea\u30f3\u30b0\u8868\u793a"
+          }
+        }
+      }
+    },
     "filePreview.revert": {
       "extractionState": "manual",
       "localizations": {
@@ -209527,6 +209544,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "檔案瀏覽器：打開所選項"
+          }
+        }
+      }
+    },
+    "shortcut.fileExplorerRenameSelection.label": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "File Explorer: Rename Selection"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u30d5\u30a1\u30a4\u30eb\u30a8\u30af\u30b9\u30d7\u30ed\u30fc\u30e9: \u9078\u629e\u9805\u76ee\u306e\u540d\u524d\u3092\u5909\u66f4"
           }
         }
       }
