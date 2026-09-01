@@ -93,6 +93,63 @@ enum FileExplorerFileOperation {
         return candidate
     }
 
+    /// Copies `source` into `directory`, uniquifying the destination name when it collides.
+    ///
+    /// Uniquification matches the Finder: `foo.txt` next to an existing `foo.txt` becomes
+    /// `foo 2.txt`, `foo 3.txt`, and so on. Called from the Files tree's drop handler; the
+    /// alternative — throwing on collision — would surface as "the drag did nothing" for
+    /// the common case of dropping a downloaded file into a folder that already has one.
+    ///
+    /// - Parameters:
+    ///   - source: File or directory to copy.
+    ///   - directory: Destination folder. Must exist.
+    /// - Returns: The URL of the freshly written copy.
+    /// - Throws: Any error `FileManager` raises.
+    @discardableResult
+    static func copyInto(_ source: URL, directory: URL) throws -> URL {
+        let destination = uniquifiedDestination(named: source.lastPathComponent, in: directory)
+        try FileManager.default.copyItem(at: source, to: destination)
+        return destination
+    }
+
+    /// Moves `source` into `directory`, uniquifying the destination name when it collides.
+    ///
+    /// Same uniquification rule as ``copyInto(_:directory:)``. A drop of a file from
+    /// somewhere else on the same volume is a rename under the hood; the OS handles it
+    /// atomically.
+    ///
+    /// - Parameters:
+    ///   - source: File or directory to move.
+    ///   - directory: Destination folder. Must exist.
+    /// - Returns: The URL of the moved item.
+    /// - Throws: Any error `FileManager` raises.
+    @discardableResult
+    static func moveInto(_ source: URL, directory: URL) throws -> URL {
+        let destination = uniquifiedDestination(named: source.lastPathComponent, in: directory)
+        try FileManager.default.moveItem(at: source, to: destination)
+        return destination
+    }
+
+    /// Finds a destination name that does not collide.
+    ///
+    /// Same pattern as ``duplicate(_:)`` — a `foo.txt` becomes `foo 2.txt`, then
+    /// `foo 3.txt`, etc. Kept internal to the operation surface so the numbering rule stays
+    /// in one place.
+    private static func uniquifiedDestination(named name: String, in directory: URL) -> URL {
+        let candidate = directory.appendingPathComponent(name)
+        guard FileManager.default.fileExists(atPath: candidate.path) else { return candidate }
+        let ns = name as NSString
+        let stem = ns.deletingPathExtension
+        let ext = ns.pathExtension
+        var index = 2
+        while true {
+            let suffix = ext.isEmpty ? "\(stem) \(index)" : "\(stem) \(index).\(ext)"
+            let attempt = directory.appendingPathComponent(suffix)
+            if !FileManager.default.fileExists(atPath: attempt.path) { return attempt }
+            index += 1
+        }
+    }
+
     /// Moves the item at `url` to the Trash.
     ///
     /// - Parameter url: Item to trash.

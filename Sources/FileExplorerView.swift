@@ -252,6 +252,85 @@ struct FileExplorerPanelView: NSViewRepresentable {
             return node.isExpandable
         }
 
+        // MARK: - Drag & Drop (files from Finder / external apps)
+
+        func outlineView(
+            _ outlineView: NSOutlineView,
+            validateDrop info: any NSDraggingInfo,
+            proposedItem item: Any?,
+            proposedChildIndex index: Int
+        ) -> NSDragOperation {            guard info.draggingPasteboard.canReadObject(forClasses: [NSURL.self], options: nil) else {
+                return []
+            }
+            guard let target = dropTargetDirectory(for: item) else { return [] }
+            let urls = info.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL] ?? []
+            let targetPath = target.standardizedFileURL.path
+            for source in urls {
+                let sourceParent = source.deletingLastPathComponent().standardizedFileURL.path
+                let sourcePath = source.standardizedFileURL.path
+                if sourceParent == targetPath || sourcePath == targetPath {
+                    return []
+                }
+            }
+            outlineView.setDropItem(dropTargetNode(for: item), dropChildIndex: NSOutlineViewDropOnItemIndex)
+            let modifiers = NSEvent.modifierFlags.intersection(.deviceIndependentFlagsMask)
+            let op: NSDragOperation = modifiers.contains(.option) ? .move : .copy
+            return op
+        }
+
+        func outlineView(
+            _ outlineView: NSOutlineView,
+            acceptDrop info: any NSDraggingInfo,
+            item: Any?,
+            childIndex index: Int
+        ) -> Bool {
+            guard let target = dropTargetDirectory(for: item),
+                  let urls = info.draggingPasteboard.readObjects(
+                      forClasses: [NSURL.self], options: nil
+                  ) as? [URL], !urls.isEmpty else {
+                return false
+            }
+            let modifiers = NSEvent.modifierFlags.intersection(.deviceIndependentFlagsMask)
+            let move = modifiers.contains(.option)
+            do {
+                for source in urls {
+                    if move {
+                        _ = try FileExplorerFileOperation.moveInto(source, directory: target)
+                    } else {
+                        _ = try FileExplorerFileOperation.copyInto(source, directory: target)
+                    }
+                }
+                store.reload()
+                return true
+            } catch {
+                FileExplorerNamePrompt.presentFailure(error, window: outlineView.window)
+                return false
+            }
+        }
+
+        /// The directory a drop should land in.
+        ///
+        /// Nil means "the workspace root" — the outline's own item argument for a drop into
+        /// the whitespace between rows. A drop on a file gets redirected to its parent so
+        /// the user does not have to hit the folder exactly (Finder's convention).
+        private func dropTargetDirectory(for item: Any?) -> URL? {
+            if let node = item as? FileExplorerNode {
+                if node.isDirectory {
+                    return URL(fileURLWithPath: node.path)
+                }
+                return URL(fileURLWithPath: node.path).deletingLastPathComponent()
+            }
+            guard !store.rootPath.isEmpty else { return nil }
+            return URL(fileURLWithPath: store.rootPath)
+        }
+
+        /// The node to visually highlight during the drop. Nil is the outline itself,
+        /// which shows a border around the whole content area.
+        private func dropTargetNode(for item: Any?) -> Any? {
+            guard let node = item as? FileExplorerNode else { return nil }
+            return node.isDirectory ? node : nil
+        }
+
         // MARK: - NSOutlineViewDelegate
 
         func outlineView(_ outlineView: NSOutlineView, viewFor tableColumn: NSTableColumn?, item: Any) -> NSView? {
@@ -874,6 +953,9 @@ final class FileExplorerContainerView: NSView {
         outlineView.target = coordinator
         outlineView.doubleAction = #selector(FileExplorerPanelView.Coordinator.handleDoubleClick(_:))
         outlineView.setDraggingSourceOperationMask(.move, forLocal: true)
+        // Files from Finder or other apps land here as file-URLs; the drop handlers in
+        // the coordinator turn them into copy/move operations against the target folder.
+        outlineView.registerForDraggedTypes([.fileURL])
         coordinator.outlineView = outlineView
 
         // Context menu

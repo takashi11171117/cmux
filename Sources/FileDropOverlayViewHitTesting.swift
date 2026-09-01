@@ -410,6 +410,134 @@ extension FileDropOverlayView {
         return BonsplitTabBarHitRegionRegistry.containsWindowPoint(windowPoint, in: window)
     }
 
+    /// Whether the drag is over the file-explorer outline, in which case the overlay
+    /// should let the drop reach the outline instead of intercepting it.
+    ///
+    /// `point` is in this overlay's local coordinate space. `hitTest` calls it that way,
+    /// so it needs a local-space entry point. Internally it converts to the window
+    /// coordinate space, which is what the shared implementation needs.
+    func shouldDeferFileDropOverlayToFileExplorer(at point: NSPoint) -> Bool {
+        let windowPoint = convert(point, to: nil)
+        return isFileExplorerOutlineAtWindowPoint(windowPoint)
+    }
+
+    /// Returns the drag operation to advertise while forwarding a file-explorer drop.
+    ///
+    /// - When the drag is over the outline, this method resolves the target outline,
+    ///   caches it in ``activeFileExplorerOutline``, and returns `.copy` (or `.move` when
+    ///   the Option modifier is held).
+    /// - When the drag leaves the outline (or was never over it), the cache clears and
+    ///   the method returns nil so the normal drag routing takes over.
+    ///
+    /// This is what actually lets Finder drops land in the Files tree: the overlay owns
+    /// the AppKit drag destination for the whole window, so it accepts the drop on the
+    /// outline's behalf and hands it off in ``performFileExplorerFileDrop(sender:outline:)``.
+    func forwardedFileExplorerDragOperation(_ sender: any NSDraggingInfo) -> NSDragOperation? {
+        // Only file URLs are eligible — other pasteboard types have their own routing.
+        guard sender.draggingPasteboard.canReadObject(forClasses: [NSURL.self], options: nil) else {
+            activeFileExplorerOutline = nil
+            return nil
+        }
+        guard let outline = fileExplorerOutlineAtWindowPoint(sender.draggingLocation) else {
+            activeFileExplorerOutline = nil
+            return nil
+        }
+        activeFileExplorerOutline = outline
+        let modifiers = NSEvent.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        return modifiers.contains(.option) ? .move : .copy
+    }
+
+    /// Runs the file drop, using the outline's row under the cursor to pick the folder.
+    ///
+    /// Mirrors the Files coordinator's drop rules: drop on a directory row means "into
+    /// that directory", drop on a file row means "into that file's parent", drop on
+    /// empty space means "into the workspace root". Same uniquification (`foo 2.txt`)
+    /// as the context-menu Duplicate action.
+    func performFileExplorerFileDrop(
+        sender: any NSDraggingInfo,
+        outline: FileExplorerNSOutlineView
+    ) -> Bool {
+        guard let urls = sender.draggingPasteboard.readObjects(
+            forClasses: [NSURL.self], options: nil
+        ) as? [URL], !urls.isEmpty else { return false }
+
+        let target = fileExplorerDropTargetDirectory(sender: sender, outline: outline)
+        guard let target else { return false }
+
+        let modifiers = NSEvent.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        let move = modifiers.contains(.option)
+        do {
+            for source in urls {
+                if move {
+                    _ = try FileExplorerFileOperation.moveInto(source, directory: target)
+                } else {
+                    _ = try FileExplorerFileOperation.copyInto(source, directory: target)
+                }
+            }
+            outline.fileExplorerCoordinator?.store.reload()
+            return true
+        } catch {
+            FileExplorerNamePrompt.presentFailure(error, window: outline.window)
+            return false
+        }
+    }
+
+    /// Resolves the destination directory for a forwarded drop.
+    private func fileExplorerDropTargetDirectory(
+        sender: any NSDraggingInfo,
+        outline: FileExplorerNSOutlineView
+    ) -> URL? {
+        // Convert the window-space location to the outline's own coordinate space so
+        // `row(at:)` can find the row under the cursor.
+        let outlinePoint = outline.convert(sender.draggingLocation, from: nil)
+        let row = outline.row(at: outlinePoint)
+        if row >= 0, let node = outline.item(atRow: row) as? FileExplorerNode {
+            if node.isDirectory {
+                return URL(fileURLWithPath: node.path)
+            }
+            return URL(fileURLWithPath: node.path).deletingLastPathComponent()
+        }
+        // No row under the cursor — drop into the workspace root.
+        guard let store = outline.fileExplorerCoordinator?.store,
+              !store.rootPath.isEmpty else { return nil }
+        return URL(fileURLWithPath: store.rootPath)
+    }
+
+    /// The `FileExplorerNSOutlineView` under a window-space point, if any.
+    private func fileExplorerOutlineAtWindowPoint(_ windowPoint: NSPoint) -> FileExplorerNSOutlineView? {
+        guard let window, let contentView = window.contentView else { return nil }
+        isHidden = true
+        defer { isHidden = false }
+        let contentPoint = contentView.convert(windowPoint, from: nil)
+        var view = contentView.hitTest(contentPoint)
+        while let current = view {
+            if let outline = current as? FileExplorerNSOutlineView { return outline }
+            view = current.superview
+        }
+        return nil
+    }
+
+    /// Whether a point in window coordinates lies over the file-explorer outline.
+    ///
+    /// Split from the local-space entry point so drag callbacks can use it — those
+    /// receive `sender.draggingLocation`, which is already in window coordinates. Same
+    /// shape as ``shouldDeferFileDropOverlayToBonsplitTabBar(at:)``: hide self,
+    /// hit-test through the window's content view, walk up the responder chain looking
+    /// for a `FileExplorerNSOutlineView`. Its own registered drag types (`.fileURL`)
+    /// then receive the drag.
+    func isFileExplorerOutlineAtWindowPoint(_ windowPoint: NSPoint) -> Bool {
+        guard let window, let contentView = window.contentView else { return false }
+        isHidden = true
+        defer { isHidden = false }
+        let contentPoint = contentView.convert(windowPoint, from: nil)
+        var view = contentView.hitTest(contentPoint)
+        while let current = view {
+            if current is FileExplorerNSOutlineView { return true }
+            view = current.superview
+        }
+        return false
+    }
+
     func paneDropTargetUnderPoint(_ windowPoint: NSPoint) -> (any FileDropPaneTarget)? {
         if let paneTarget = inlinePaneDropTargetUnderPoint(windowPoint) {
             return paneTarget

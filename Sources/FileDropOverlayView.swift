@@ -55,6 +55,12 @@ final class FileDropOverlayView: NSView {
     weak var activePaneDropTarget: (any FileDropPaneTarget)?
     /// Pane drop target that accepted prepareForDragOperation.
     weak var preparedPaneDropTarget: (any FileDropPaneTarget)?
+    /// The File Explorer outline currently receiving forwarded drag events, if any.
+    /// The outline is a destination-registered view under a sibling of this overlay, but
+    /// AppKit picks a drag destination once at drag start; the overlay wins and cannot
+    /// give the seat away by returning `[]`. So the overlay accepts the drag and hands
+    /// the drop off to the outline through this weak reference.
+    weak var activeFileExplorerOutline: FileExplorerNSOutlineView?
     var didPerformDragAsText = false
     weak var performedTextDragWebView: WKWebView?
     weak var performedTextPaneDropTarget: (any FileDropPaneTarget)?
@@ -139,6 +145,12 @@ final class FileDropOverlayView: NSView {
 #endif
         guard shouldCapture else { return nil }
         if shouldDeferFileDropOverlayToBonsplitTabBar(at: point) {
+            return nil
+        }
+        // The file-explorer outline registers `.fileURL` for its own drop handlers;
+        // intercepting here would break the "drag from Finder into a folder" case that
+        // just landed. Defer to the outline the same way the tab bar defers.
+        if shouldDeferFileDropOverlayToFileExplorer(at: point) {
             return nil
         }
 
@@ -231,10 +243,12 @@ final class FileDropOverlayView: NSView {
     // HTML5 drag events (dragenter, dragleave, drop) fire correctly.
 
     override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        if let op = forwardedFileExplorerDragOperation(sender) { return op }
         return updateDragTarget(sender, phase: "entered")
     }
 
     override func draggingUpdated(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        if let op = forwardedFileExplorerDragOperation(sender) { return op }
         return updateDragTarget(sender, phase: "updated")
     }
 
@@ -242,6 +256,7 @@ final class FileDropOverlayView: NSView {
         hintBadgeView.hide()
         preparedDragWebView = nil
         preparedPaneDropTarget = nil
+        activeFileExplorerOutline = nil
         didPerformDragAsText = false
         performedTextDragWebView = nil
         performedTextPaneDropTarget = nil
@@ -284,6 +299,7 @@ final class FileDropOverlayView: NSView {
     }
 
     override func prepareForDragOperation(_ sender: any NSDraggingInfo) -> Bool {
+        if activeFileExplorerOutline != nil { return true }
         let hasLocalDraggingSource = sender.draggingSource != nil
         let types = sender.draggingPasteboard.types
         let shouldCapture = DragOverlayRoutingPolicy.shouldCaptureFileDropDestination(
@@ -346,6 +362,10 @@ final class FileDropOverlayView: NSView {
     }
 
     override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
+        if let outline = activeFileExplorerOutline {
+            defer { activeFileExplorerOutline = nil }
+            return performFileExplorerFileDrop(sender: sender, outline: outline)
+        }
         let hasLocalDraggingSource = sender.draggingSource != nil
         let types = sender.draggingPasteboard.types
         let shouldCapture = DragOverlayRoutingPolicy.shouldCaptureFileDropDestination(
