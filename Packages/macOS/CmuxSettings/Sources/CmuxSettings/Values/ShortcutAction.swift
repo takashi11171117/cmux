@@ -129,6 +129,8 @@ public enum ShortcutAction: String, CaseIterable, Sendable, Hashable, SettingCod
     case fileExplorerOpenSelection
     /// Mirrors Finder's Command-Down open-selection shortcut from File Explorer focus.
     case fileExplorerOpenSelectionFinderAlias
+    /// Starts VS Code-style inline rename on the selected File Explorer row.
+    case fileExplorerRenameSelection
 
     // MARK: Canvas
     case toggleCanvasLayout
@@ -250,7 +252,8 @@ extension ShortcutAction {
              .diffViewerNextFile,
              .diffViewerPreviousFile,
              .fileExplorerOpenSelection,
-             .fileExplorerOpenSelectionFinderAlias:
+             .fileExplorerOpenSelectionFinderAlias,
+             .fileExplorerRenameSelection:
             return true
         default:
             return false
@@ -262,6 +265,7 @@ extension ShortcutAction {
         self != .showHideAllWindows
             && self != .fileExplorerOpenSelection
             && self != .fileExplorerOpenSelectionFinderAlias
+            && self != .fileExplorerRenameSelection
             && self != .cycleTextBoxSubmitAction
     }
 
@@ -277,7 +281,7 @@ extension ShortcutAction {
         case .switchRightSidebarToFiles, .switchRightSidebarToFind,
              .switchRightSidebarToSessions, .switchRightSidebarToFeed, .switchRightSidebarToDock:
             return .atom(.sidebarFocus)
-        case .fileExplorerOpenSelection, .fileExplorerOpenSelectionFinderAlias:
+        case .fileExplorerOpenSelection, .fileExplorerOpenSelectionFinderAlias, .fileExplorerRenameSelection:
             return .atom(.sidebarFocus)
         case .commandPaletteNext, .commandPalettePrevious:
             return .key(ShortcutContextKnownKey.commandPaletteVisible.rawValue)

@@ -145,8 +145,9 @@ extension ShortcutAction {
         case .sendCtrlFToTerminal: return nil
         case .clearScreenKeepScrollback: return ShortcutStroke(key: "k", command: true, shift: true)
         case .toggleRightSidebar: return ShortcutStroke(key: "b", command: true, option: true)
-        case .fileExplorerOpenSelection: return ShortcutStroke(key: "\r")
+        case .fileExplorerOpenSelection: return ShortcutStroke(key: "")
         case .fileExplorerOpenSelectionFinderAlias: return ShortcutStroke(key: "↓", command: true)
+        case .fileExplorerRenameSelection: return ShortcutStroke(key: "\r")
         case .openDiffViewer: return ShortcutStroke(key: "d", command: true, shift: true, control: true)
         case .saveFilePreview: return ShortcutStroke(key: "s", command: true)
         case .openBrowser: return ShortcutStroke(key: "l", command: true, shift: true)

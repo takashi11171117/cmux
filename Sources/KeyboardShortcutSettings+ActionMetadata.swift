@@ -4,6 +4,7 @@ extension KeyboardShortcutSettings.Action {
     var allowsChordShortcut: Bool {
         self != .fileExplorerOpenSelection
             && self != .fileExplorerOpenSelectionFinderAlias
+            && self != .fileExplorerRenameSelection
             && self != .cycleTextBoxSubmitAction
     }
 

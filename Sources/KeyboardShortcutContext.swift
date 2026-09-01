@@ -231,6 +231,15 @@ extension AppDelegate {
         }
 
         if let outlineView = focusView as? FileExplorerNSOutlineView {
+            // Rename must win over Open when the shortcut matches; the outline's own
+            // keyDown never fires for `Return` because AppDelegate's router runs first
+            // (verified 2026-09-01 with `afide.explorer.keyDown` = 0 while
+            // `afide.open.check` fired per press).
+            let placement = outlineView.fileExplorerPanelPlacement
+            if event.isFileExplorerRenameSelectionShortcut(in: placement) {
+                outlineView.fileExplorerCoordinator?.renameSelectedNode(in: outlineView)
+                return true
+            }
             return outlineView.handleOpenSelectionShortcut(event)
         }
         if let resultsView = focusView as? FileExplorerSearchResultsTableView {

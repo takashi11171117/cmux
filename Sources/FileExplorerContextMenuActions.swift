@@ -76,6 +76,31 @@ extension FileExplorerPanelView.Coordinator {
 
     @objc func contextMenuRename(_ sender: NSMenuItem) {
         guard let node = node(from: sender) else { return }
+        // Same path as `Return` in the outline: find the selected row's cell and put it
+        // into inline rename. The context-menu invocation reselects the target row first
+        // so the visible cell is the one we edit — a right-click on an unrelated row
+        // otherwise starts editing whichever row was selected before.
+        guard let outline = outlineView else {
+            // No outline view attached (right-clicks from search results / other surfaces
+            // land here with a nil outline). Fall back to the modal prompt so the entry
+            // point is not left broken.
+            promptRename(for: node)
+            return
+        }
+        let targetRow = outline.row(forItem: node)
+        guard targetRow >= 0 else {
+            promptRename(for: node)
+            return
+        }
+        outline.selectRowIndexes(IndexSet(integer: targetRow), byExtendingSelection: false)
+        renameSelectedNode(in: outline)
+    }
+
+    /// Runs the modal rename prompt for one node.
+    ///
+    /// Kept as the fallback for entry points that do not have a live outline view row
+    /// to edit inline (search results, error recovery).
+    func promptRename(for node: FileExplorerNode) {
         guard let name = FileExplorerNamePrompt.run(
             title: String(localized: "fileExplorer.prompt.rename", defaultValue: "Rename"),
             initialValue: node.name,
@@ -112,7 +137,9 @@ extension FileExplorerPanelView.Coordinator {
     /// The tree is reloaded rather than patched in place: the provider owns the node graph,
     /// and a hand-patched insert would disagree with it the moment anything else changed
     /// the directory.
-    private func perform(_ work: () throws -> Void) {
+    /// Internal so the keyboard-shortcut extension in `FileExplorerKeyboardShortcuts.swift`
+    /// can share the same failure path — one behavior, one dialog, one reload.
+    func perform(_ work: () throws -> Void) {
         do {
             try work()
             store.reload()

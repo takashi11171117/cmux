@@ -229,7 +229,7 @@ extension KeyboardShortcutSettings.Action {
             return .commandPaletteVisible
         case .switchRightSidebarToFiles, .switchRightSidebarToFind, .switchRightSidebarToSessions,
              .switchRightSidebarToFeed, .switchRightSidebarToDock, .fileExplorerOpenSelection,
-             .fileExplorerOpenSelectionFinderAlias:
+             .fileExplorerOpenSelectionFinderAlias, .fileExplorerRenameSelection:
             return .rightSidebarFocus
         case .renameTab, .renameWorkspace, .sendCtrlFToTerminal, .clearScreenKeepScrollback:
             return .nonBrowserPanel

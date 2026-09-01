@@ -34,6 +34,7 @@ enum KeyboardShortcutSettings {
             .findInDirectory,
             .fileExplorerOpenSelection,
             .fileExplorerOpenSelectionFinderAlias,
+            .fileExplorerRenameSelection,
         ].filter(actions.contains)
         let actionSet = Set(colocatedSidebarActions)
         let baseActions = actions.filter { !actionSet.contains($0) }
@@ -169,6 +170,7 @@ enum KeyboardShortcutSettings {
         case toggleRightSidebar = "toggleFileExplorer"
         case fileExplorerOpenSelection
         case fileExplorerOpenSelectionFinderAlias
+        case fileExplorerRenameSelection
 
         // Panels
         case saveFilePreview
@@ -328,6 +330,7 @@ enum KeyboardShortcutSettings {
             case .toggleRightSidebar: return String(localized: "shortcut.toggleRightSidebar.label", defaultValue: "Toggle Right Sidebar")
             case .fileExplorerOpenSelection: return String(localized: "shortcut.fileExplorerOpenSelection.label", defaultValue: "File Explorer: Open Selection")
             case .fileExplorerOpenSelectionFinderAlias: return String(localized: "shortcut.fileExplorerOpenSelectionFinderAlias.label", defaultValue: "File Explorer: Open Selection (Finder Alias)")
+            case .fileExplorerRenameSelection: return String(localized: "shortcut.fileExplorerRenameSelection.label", defaultValue: "File Explorer: Rename Selection")
             case .saveFilePreview: return String(localized: "shortcut.saveFilePreview.label", defaultValue: "Save File Preview")
             case .openBrowser: return String(localized: "shortcut.openBrowser.label", defaultValue: "Open Browser")
             case .focusBrowserAddressBar: return String(localized: "command.browserFocusAddressBar.title", defaultValue: "Focus Address Bar")
@@ -587,9 +590,14 @@ enum KeyboardShortcutSettings {
             case .toggleRightSidebar:
                 return StoredShortcut(key: "b", command: true, shift: false, option: true, control: false)
             case .fileExplorerOpenSelection:
-                return StoredShortcut(key: "\r", command: false, shift: false, option: false, control: false)
+                // Deliberately unbound by default. Enter now renames (Finder convention),
+                // and the file is opened with Cmd+Down (fileExplorerOpenSelectionFinderAlias).
+                // Users can still bind Enter back to Open in Settings.
+                return StoredShortcut(key: "", command: false, shift: false, option: false, control: false)
             case .fileExplorerOpenSelectionFinderAlias:
                 return StoredShortcut(key: "↓", command: true, shift: false, option: false, control: false)
+            case .fileExplorerRenameSelection:
+                return StoredShortcut(key: "\r", command: false, shift: false, option: false, control: false)
             case .saveFilePreview:
                 return StoredShortcut(key: "s", command: true, shift: false, option: false, control: false)
             case .openBrowser:

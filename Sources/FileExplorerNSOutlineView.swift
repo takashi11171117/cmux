@@ -22,6 +22,10 @@ final class FileExplorerNSOutlineView: NSOutlineView {
             return
         }
 
+        if handleRenameSelectionShortcut(event) {
+            return
+        }
+
         if handleOpenSelectionShortcut(event) {
             return
         }
@@ -59,6 +63,9 @@ final class FileExplorerNSOutlineView: NSOutlineView {
            handleQuickSearchKey(event) {
             return true
         }
+        if handleRenameSelectionShortcut(event) {
+            return true
+        }
         if handleOpenSelectionShortcut(event) {
             return true
         }
@@ -76,6 +83,19 @@ final class FileExplorerNSOutlineView: NSOutlineView {
             return true
         }
         return super.performKeyEquivalent(with: event)
+    }
+
+    /// Enter → inline rename の分岐。ここより上位のアプリレベルルーターでも同じ分岐を持つ
+    /// (`handleFocusedFileExplorerOpenSelectionShortcut`)。ルーターが先に発火するので
+    /// outline 側のこの実装は基本発火しないが、ルーターを経由しない経路のためのフォール
+    /// バックとして残す。
+    private func handleRenameSelectionShortcut(_ event: NSEvent) -> Bool {
+        guard event.isFileExplorerRenameSelectionShortcut(in: fileExplorerPanelPlacement) else {
+            return false
+        }
+        endQuickSearch()
+        fileExplorerCoordinator?.renameSelectedNode(in: self)
+        return true
     }
 
     override func becomeFirstResponder() -> Bool {

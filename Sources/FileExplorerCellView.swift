@@ -2,11 +2,30 @@ import AppKit
 import CmuxAppKitSupportUI
 import UniformTypeIdentifiers
 
-final class FileExplorerCellView: NSTableCellView {
+final class FileExplorerCellView: NSTableCellView, NSTextFieldDelegate {
     private let iconView = CmuxResolvedIconImageView()
-    private let nameLabel = NSTextField(labelWithString: "")
+    /// Doubles as label and inline rename field. Kept as a plain `NSTextField` — not
+    /// `labelWithString:` — so we can flip `isEditable` at rename time and let AppKit's
+    /// field editor drive the edit. Baseline styling matches the label form (borderless,
+    /// no background) so the "not editing" state reads exactly the same as before.
+    private let nameLabel = NSTextField()
     private let loadingIndicator = NSProgressIndicator()
     private var trackingArea: NSTrackingArea?
+
+    /// Original name captured when a rename begins, so `endRename(commit: false)` can
+    /// restore the field cleanly.
+    private var renameOriginalName: String = ""
+    /// True while the field editor is active. Prevents `controlTextDidEndEditing` from
+    /// firing our commit path twice — AppKit fires it on `resignFirstResponder`, which
+    /// happens after we've already committed via Enter.
+    private var isRenaming = false
+
+    /// Callback fired when the user confirms a new name (`Enter` or focus loss). Nil when
+    /// no rename is armed.
+    var onRenameCommit: ((_ newName: String) -> Void)?
+    /// Callback fired when the user cancels the rename (`Esc`).
+    var onRenameCancel: (() -> Void)?
+
     var onHover: ((Bool) -> Void)?
     private var nameLabelTrailingToLoadingConstraint: NSLayoutConstraint!
     private var nameLabelTrailingToContainerConstraint: NSLayoutConstraint!
@@ -33,6 +52,16 @@ final class FileExplorerCellView: NSTableCellView {
         nameLabel.textColor = .labelColor
         nameLabel.lineBreakMode = .byTruncatingTail
         nameLabel.maximumNumberOfLines = 1
+        // Baseline: reads as a label. `beginRename()` flips the two `is…` flags to enter
+        // the field-editor state, and `endRename` restores them. Bezel / background stay
+        // off in both states so the row never grows.
+        nameLabel.isEditable = false
+        nameLabel.isSelectable = false
+        nameLabel.isBordered = false
+        nameLabel.isBezeled = false
+        nameLabel.drawsBackground = false
+        nameLabel.focusRingType = .none
+        nameLabel.delegate = self
 
         loadingIndicator.translatesAutoresizingMaskIntoConstraints = false
         loadingIndicator.style = .spinning
@@ -169,5 +198,73 @@ final class FileExplorerCellView: NSTableCellView {
 
     override func mouseExited(with event: NSEvent) {
         onHover?(false)
+    }
+
+    // MARK: - Inline rename
+
+    /// Puts the row into VS Code-style inline rename: the name label becomes an editable
+    /// field, focus lands on it, and the file name is selected up to (but excluding) its
+    /// extension so a quick retype only overwrites the base name.
+    func beginRename() {
+        guard let window else { return }
+        renameOriginalName = nameLabel.stringValue
+        nameLabel.isEditable = true
+        nameLabel.isSelectable = true
+        isRenaming = true
+        _ = window.makeFirstResponder(nameLabel)
+        selectRenameBaseName()
+    }
+
+    private func selectRenameBaseName() {
+        guard let editor = nameLabel.currentEditor() else { return }
+        let name = renameOriginalName as NSString
+        let ext = name.pathExtension
+        if !ext.isEmpty, name.length > ext.count + 1 {
+            editor.selectedRange = NSRange(location: 0, length: name.length - ext.count - 1)
+        } else {
+            editor.selectAll(nil)
+        }
+    }
+
+    private func endRename(commit: Bool) {
+        guard isRenaming else { return }
+        isRenaming = false
+        let value = nameLabel.stringValue
+        nameLabel.isEditable = false
+        nameLabel.isSelectable = false
+        if commit,
+           !value.isEmpty,
+           value != renameOriginalName {
+            onRenameCommit?(value)
+        } else {
+            // Restoring the original text before firing the cancel callback matters: the
+            // label is what the row shows during the next runloop turn, before the outline
+            // reload landing new node names.
+            nameLabel.stringValue = renameOriginalName
+            onRenameCancel?()
+        }
+    }
+
+    // MARK: - NSTextFieldDelegate
+
+    func control(_ control: NSControl, textView: NSTextView,
+                 doCommandBy commandSelector: Selector) -> Bool {
+        switch commandSelector {
+        case #selector(NSResponder.insertNewline(_:)),
+             #selector(NSResponder.insertLineBreak(_:)):
+            endRename(commit: true)
+            return true
+        case #selector(NSResponder.cancelOperation(_:)):
+            endRename(commit: false)
+            return true
+        default:
+            return false
+        }
+    }
+
+    func controlTextDidEndEditing(_ notification: Notification) {
+        // Clicking away is also a commit — consistent with Finder and VS Code. `endRename`
+        // is idempotent because `isRenaming` gates it.
+        endRename(commit: true)
     }
 }

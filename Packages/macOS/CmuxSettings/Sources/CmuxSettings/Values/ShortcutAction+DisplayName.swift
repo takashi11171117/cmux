@@ -127,6 +127,8 @@ extension ShortcutAction {
             return String(localized: "shortcut.fileExplorerOpenSelection.label", defaultValue: "File Explorer: Open Selection")
         case .fileExplorerOpenSelectionFinderAlias:
             return String(localized: "shortcut.fileExplorerOpenSelectionFinderAlias.label", defaultValue: "File Explorer: Open Selection (Finder Alias)")
+        case .fileExplorerRenameSelection:
+            return String(localized: "shortcut.fileExplorerRenameSelection.label", defaultValue: "File Explorer: Rename Selection")
         case .toggleCanvasLayout:
             return String(localized: "shortcut.toggleCanvasLayout.label", defaultValue: "Toggle Canvas Layout")
         case .canvasRevealFocusedPane:

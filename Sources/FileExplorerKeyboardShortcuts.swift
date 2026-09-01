@@ -37,6 +37,32 @@ extension FileExplorerPanelView.Coordinator {
         openNode(in: outlineView, at: row)
     }
 
+    /// Puts the selected row into VS Code-style inline rename.
+    ///
+    /// Not a modal dialog: the cell's name label flips to an editable field, focus lands
+    /// there, and the base name (everything before the extension) is selected so a retype
+    /// only overwrites the base. Applied on `Return`, cancelled on `Esc`, committed on
+    /// focus loss — all handled by ``FileExplorerCellView.beginRename()``.
+    func renameSelectedNode(in outlineView: NSOutlineView) {
+        guard let row = resolvedSelectionRow(in: outlineView),
+              row >= 0,
+              let node = outlineView.item(atRow: row) as? FileExplorerNode,
+              let cell = outlineView.view(atColumn: 0, row: row, makeIfNecessary: false)
+                as? FileExplorerCellView
+        else { return }
+        cell.onRenameCommit = { [weak self] newName in
+            guard let self else { return }
+            self.perform {
+                _ = try FileExplorerFileOperation.rename(
+                    URL(fileURLWithPath: node.path),
+                    to: newName
+                )
+            }
+        }
+        cell.onRenameCancel = { }
+        cell.beginRename()
+    }
+
     func openNode(in outlineView: NSOutlineView, at row: Int) {
         guard row >= 0,
               let node = outlineView.item(atRow: row) as? FileExplorerNode else { return }
@@ -122,5 +148,23 @@ private extension FileExplorerPanelPlacement {
 private extension KeyboardShortcutSettings.Action {
     static var fileExplorerOpenSelectionActions: [Self] {
         [.fileExplorerOpenSelection, .fileExplorerOpenSelectionFinderAlias]
+    }
+
+    static var fileExplorerRenameSelectionActions: [Self] {
+        [.fileExplorerRenameSelection]
+    }
+}
+
+@MainActor
+extension NSEvent {
+    func isFileExplorerRenameSelectionShortcut(in placement: FileExplorerPanelPlacement) -> Bool {
+        isFileExplorerRenameSelectionShortcut(in: placement.openSelectionShortcutContext(for: self))
+    }
+
+    func isFileExplorerRenameSelectionShortcut(in context: ShortcutContext) -> Bool {
+        KeyboardShortcutSettings.Action.fileExplorerRenameSelectionActions.contains { action in
+            KeyboardShortcutSettings.shortcut(for: action).matches(event: self) &&
+                KeyboardShortcutSettings.effectiveWhenClause(for: action).evaluate(context)
+        }
     }
 }
