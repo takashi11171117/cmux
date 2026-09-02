@@ -21,7 +21,7 @@ struct GitStatusProvider: Sendable {
         self.environment = environment
     }
 
-    func fetchStatus(directory: String) -> [String: GitFileStatus] {
+    func fetchStatus(directory: String) -> [String: GitEntryStatus] {
         guard let repoRoot = gitRepoRoot(for: directory) else { return [:] }
         // git reports the repo root physically (/private/var/...) while the caller may spell
         // the explorer root through a symlink (/var, /tmp, a symlinked project dir). Resolve
@@ -38,7 +38,7 @@ struct GitStatusProvider: Sendable {
     func fetchStatusSSH(
         directory: String, destination: String, port: Int?,
         identityFile: String?, sshOptions: [String]
-    ) -> [String: GitFileStatus] {
+    ) -> [String: GitEntryStatus] {
         let escapedDir = directory.replacingOccurrences(of: "'", with: "'\\''")
         let cmd = [
             "cd '\(escapedDir)' 2>/dev/null",
@@ -61,9 +61,9 @@ struct GitStatusProvider: Sendable {
 
     private func parseGitStatus(
         output: String?, repoRoot: String, explorerRoot: String, keyRoot: String
-    ) -> [String: GitFileStatus] {
+    ) -> [String: GitEntryStatus] {
         guard let output, !output.isEmpty else { return [:] }
-        var statusMap: [String: GitFileStatus] = [:]
+        var statusMap: [String: GitEntryStatus] = [:]
         let normalizedRepoRoot = Self.pathWithoutTrailingSlashes(repoRoot)
         let normalizedExplorerRoot = Self.pathWithoutTrailingSlashes(explorerRoot)
         let normalizedKeyRoot = Self.pathWithoutTrailingSlashes(keyRoot)
@@ -81,7 +81,7 @@ struct GitStatusProvider: Sendable {
             let path = String(entry.dropFirst(3))
             let usesSecondPath = Self.statusUsesSecondPath(index: indexStatus, workTree: workTreeStatus)
             entryIndex += usesSecondPath ? 2 : 1
-            guard let status = parseStatusChars(index: indexStatus, workTree: workTreeStatus) else { continue }
+            guard let entryStatus = Self.parseXY(index: indexStatus, workTree: workTreeStatus) else { continue }
 
             let absolutePath = Self.absolutePath(repoRoot: normalizedRepoRoot, relativePath: path)
             guard Self.path(absolutePath, isContainedIn: normalizedExplorerRoot) else { continue }
@@ -98,38 +98,65 @@ struct GitStatusProvider: Sendable {
                 key = normalizedKeyRoot + String(absolutePath.dropFirst(normalizedExplorerRoot.count))
             }
 
-            statusMap[key] = status
+            statusMap[key] = entryStatus
             markParentDirectories(
                 absolutePath: key,
                 explorerRoot: normalizedKeyRoot,
-                status: status,
+                entryStatus: entryStatus,
                 in: &statusMap
             )
         }
         return statusMap
     }
 
-    private func parseStatusChars(index: Character, workTree: Character) -> GitFileStatus? {
-        if index == "?" && workTree == "?" { return .untracked }
-        if index == "U" || workTree == "U" { return .modified }
-        if index == "T" || workTree == "T" { return .modified }
-        if index == "A" || workTree == "A" { return .added }
-        if index == "C" || workTree == "C" { return .added }
-        if index == "D" || workTree == "D" { return .deleted }
-        if index == "R" || workTree == "R" { return .renamed }
-        if index == "M" || workTree == "M" { return .modified }
-        return nil
+    /// Turns one `XY` status pair from `git status --porcelain=v1` into a
+    /// ``GitEntryStatus``. Returns `nil` when neither side reports a change.
+    ///
+    /// The `??` (untracked) pair is a documented git convention that the pre-split parser
+    /// treated as a single "untracked" state. Here it maps to
+    /// `staged: nil, unstaged: .untracked`: git itself considers untracked files to be on
+    /// the working-tree side (`git add` is what moves them to the index), and the Git tab
+    /// needs them in the Changes section, not Staged Changes.
+    ///
+    /// Kept static so tests can exercise every XY without constructing a provider.
+    static func parseXY(index: Character, workTree: Character) -> GitEntryStatus? {
+        // Untracked is a paired sentinel, not a per-side mapping.
+        if index == "?" && workTree == "?" {
+            return GitEntryStatus(staged: nil, unstaged: .untracked)
+        }
+        let staged = mapStatusChar(index)
+        let unstaged = mapStatusChar(workTree)
+        guard staged != nil || unstaged != nil else { return nil }
+        return GitEntryStatus(staged: staged, unstaged: unstaged)
+    }
+
+    private static func mapStatusChar(_ c: Character) -> GitFileStatus? {
+        // ' ' means "no change on this side". '?' only appears in the ?? pair, handled above.
+        switch c {
+        case "M", "T", "U": return .modified
+        case "A", "C":       return .added
+        case "D":            return .deleted
+        case "R":            return .renamed
+        default:             return nil
+        }
     }
 
     private func markParentDirectories(
         absolutePath: String, explorerRoot: String,
-        status: GitFileStatus, in map: inout [String: GitFileStatus]
+        entryStatus: GitEntryStatus, in map: inout [String: GitEntryStatus]
     ) {
-        let dirStatus: GitFileStatus = (status == .untracked) ? .untracked : .modified
+        // Parents get a summary status: untracked stays untracked, everything else is
+        // "modified" (the folder holds a change). No side split for parent rows — they
+        // are not clickable operations, they are hints for the outline colour.
+        let dirDisplayStatus: GitFileStatus = (entryStatus.displayStatus == .untracked) ? .untracked : .modified
+        let dirEntry = GitEntryStatus(
+            staged: nil,
+            unstaged: dirDisplayStatus
+        )
         var current = (absolutePath as NSString).deletingLastPathComponent
         while Self.path(current, isContainedIn: explorerRoot) && current != explorerRoot {
             if map[current] == nil {
-                map[current] = dirStatus
+                map[current] = dirEntry
             }
             current = (current as NSString).deletingLastPathComponent
         }

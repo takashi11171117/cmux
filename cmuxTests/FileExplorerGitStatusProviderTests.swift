@@ -50,7 +50,7 @@ struct FileExplorerGitStatusProviderTests {
 
         let status = GitStatusProvider().fetchStatus(directory: nestedURL.path)
 
-        #expect(status[trackedURL.path] == .some(.modified))
+        #expect(status[trackedURL.path]?.displayStatus == .modified)
     }
 
     @Test
@@ -75,7 +75,7 @@ struct FileExplorerGitStatusProviderTests {
 
         let status = GitStatusProvider().fetchStatus(directory: explorerRootURL.path)
 
-        #expect(status[visibleURL.path] == .some(.modified))
+        #expect(status[visibleURL.path]?.displayStatus == .modified)
         #expect(status[siblingFileURL.path] == nil)
         #expect(status[siblingURL.path] == nil)
     }
@@ -119,10 +119,10 @@ struct FileExplorerGitStatusProviderTests {
         ).fetchStatus(directory: repoURL.path)
 
         #expect(
-            status[repoURL.appendingPathComponent("type-change.txt").path] == .some(.modified)
+            status[repoURL.appendingPathComponent("type-change.txt").path]?.displayStatus == .modified
         )
         #expect(
-            status[repoURL.appendingPathComponent("conflicted.txt").path] == .some(.modified)
+            status[repoURL.appendingPathComponent("conflicted.txt").path]?.displayStatus == .modified
         )
     }
 
@@ -158,7 +158,7 @@ struct FileExplorerGitStatusProviderTests {
         )
 
         #expect(
-            status[repoURL.appendingPathComponent("remote.txt").path] == .some(.modified)
+            status[repoURL.appendingPathComponent("remote.txt").path]?.displayStatus == .modified
         )
     }
 
@@ -197,7 +197,7 @@ struct FileExplorerGitStatusProviderTests {
         )
 
         #expect(
-            status[repoURL.appendingPathComponent("remote.txt").path] == .some(.modified)
+            status[repoURL.appendingPathComponent("remote.txt").path]?.displayStatus == .modified
         )
         let argv = try String(contentsOf: argvLog, encoding: .utf8)
             .split(separator: "\n", omittingEmptySubsequences: false)
@@ -238,15 +238,44 @@ struct FileExplorerGitStatusProviderTests {
     private static func runGit(_ arguments: [String], in directory: URL) throws {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-        process.arguments = arguments
+        // Skip user-side pre-commit hooks under test. The test runner may inherit hooks
+        // like `git-secrets` from a global config; those are outside this test's contract
+        // and their absence-or-presence makes the harness flake ("git: 'secrets' is not a
+        // git command"). Prepending `--no-verify` after `commit` isolates us from that.
+        // Skip user-side pre-commit hooks under test. The test runner may inherit hooks
+        // like `git-secrets` from a global `init.templateDir`; those hooks fail if the
+        // corresponding tool is not installed on this machine and break the harness with
+        // "git: 'secrets' is not a git command". Two mitigations, applied together:
+        //   1. `git init` runs with `-c init.templateDir=` so the fresh repo has no user
+        //      hook templates copied into it.
+        //   2. `git commit` still gets `--no-verify` as a belt-and-suspenders defence in
+        //      case something else (config-driven hookspath, per-repo hooks) sneaks in.
+        var safeArguments = arguments
+        if safeArguments.first == "init" {
+            safeArguments.insert(contentsOf: ["-c", "init.templateDir="], at: 0)
+        }
+        if safeArguments.first == "commit" {
+            safeArguments.insert("--no-verify", at: 1)
+        }
+        process.arguments = safeArguments
         process.currentDirectoryURL = directory
         process.standardInput = FileHandle.nullDevice
         process.standardOutput = FileHandle.nullDevice
-        process.standardError = FileHandle.nullDevice
+        // stderr goes to a pipe (not nullDevice) so a `#require` failure carries the
+        // actual git error text — that is how the `git-secrets` template-hook issue was
+        // diagnosed. Without this the assertion just says `terminationStatus → 1` and the
+        // culprit is impossible to see from CI logs.
+        let errPipe = Pipe()
+        process.standardError = errPipe
 
         try process.run()
+        let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
 
-        try #require(process.terminationStatus == 0, "git \(arguments.joined(separator: " ")) failed")
+        let errText = String(data: errData, encoding: .utf8) ?? ""
+        try #require(
+            process.terminationStatus == 0,
+            "git \(safeArguments.joined(separator: " ")) failed [\(process.terminationStatus)]: \(errText)"
+        )
     }
 }

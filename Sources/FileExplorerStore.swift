@@ -721,7 +721,15 @@ final class FileExplorerStore: ObservableObject {
     @Published var rootPath: String = ""
     @Published var rootNodes: [FileExplorerNode] = []
     @Published private(set) var isRootLoading: Bool = false
-    @Published private(set) var gitStatusByPath: [String: GitFileStatus] = [:]
+    /// XY-split git status per path. New API; the sidebar Git tab reads this to build
+    /// "Staged Changes" / "Changes" sections independently.
+    @Published private(set) var gitEntryStatusByPath: [String: GitEntryStatus] = [:]
+    /// Legacy one-status projection. Kept for the file-explorer outline's colour marks,
+    /// which existed before the XY split and reads this dictionary; derived from
+    /// ``gitEntryStatusByPath`` so both are always consistent.
+    var gitStatusByPath: [String: GitFileStatus] {
+        gitEntryStatusByPath.compactMapValues(\.displayStatus)
+    }
     @Published private(set) var contentRevision = 0
     @Published private(set) var rootStatusMessage: String?
     private(set) var workspaceRootIdentity: UUID?
@@ -835,7 +843,7 @@ final class FileExplorerStore: ObservableObject {
 
     func refreshGitStatus() {
         guard !rootPath.isEmpty else {
-            gitStatusByPath = [:]
+            gitEntryStatusByPath = [:]
             return
         }
         let path = rootPath
@@ -851,7 +859,7 @@ final class FileExplorerStore: ObservableObject {
                     identityFile: identity, sshOptions: opts
                 )
                 DispatchQueue.main.async { [weak self] in
-                    self?.gitStatusByPath = status
+                    self?.gitEntryStatusByPath = status
                 }
             }
         } else {
@@ -859,7 +867,7 @@ final class FileExplorerStore: ObservableObject {
             DispatchQueue.global(qos: .utility).async {
                 let status = gitStatusProvider.fetchStatus(directory: path)
                 DispatchQueue.main.async { [weak self] in
-                    self?.gitStatusByPath = status
+                    self?.gitEntryStatusByPath = status
                 }
             }
         }
