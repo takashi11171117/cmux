@@ -19,6 +19,21 @@ struct GitEntryStatus: Equatable, Sendable {
     /// Change in the working tree, or `nil` when the file matches the index.
     let unstaged: GitFileStatus?
 
+    /// `true` when this entry is a synthesized parent-directory summary rather than a
+    /// path git itself reported.
+    ///
+    /// `GitStatusProvider` adds one entry per ancestor directory of every changed file so
+    /// the file-explorer outline can colour folders. Those entries must never appear as
+    /// rows in the Git tab — the tab builds its own folder tree from the file paths and
+    /// would otherwise show `src` twice, once as a folder and once as a bogus file.
+    let isDirectoryMarker: Bool
+
+    init(staged: GitFileStatus?, unstaged: GitFileStatus?, isDirectoryMarker: Bool = false) {
+        self.staged = staged
+        self.unstaged = unstaged
+        self.isDirectoryMarker = isDirectoryMarker
+    }
+
     /// Whether either side reports a change.
     var hasAny: Bool { staged != nil || unstaged != nil }
 

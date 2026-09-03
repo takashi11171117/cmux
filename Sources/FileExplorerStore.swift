@@ -722,13 +722,23 @@ final class FileExplorerStore: ObservableObject {
     @Published var rootNodes: [FileExplorerNode] = []
     @Published private(set) var isRootLoading: Bool = false
     /// XY-split git status per path. New API; the sidebar Git tab reads this to build
-    /// "Staged Changes" / "Changes" sections independently.
+    /// "Staged Changes" / "Changes" sections independently. Always updated together with
+    /// ``gitStatusByPath`` via ``applyGitStatus(_:)`` so subscribers of either dictionary
+    /// see a consistent view.
     @Published private(set) var gitEntryStatusByPath: [String: GitEntryStatus] = [:]
-    /// Legacy one-status projection. Kept for the file-explorer outline's colour marks,
-    /// which existed before the XY split and reads this dictionary; derived from
-    /// ``gitEntryStatusByPath`` so both are always consistent.
-    var gitStatusByPath: [String: GitFileStatus] {
-        gitEntryStatusByPath.compactMapValues(\.displayStatus)
+    /// Legacy one-status projection kept for the file-explorer outline's colour marks
+    /// and for `onChange(of:)` subscribers (GitHistoryPanelView uses it as a proxy for
+    /// HEAD moves). Do not assign it directly; use ``applyGitStatus(_:)``.
+    ///
+    /// `@Published` on both properties with a `didSet` on the primary side triggered a
+    /// runaway re-evaluation in SwiftUI that made the right-sidebar mode buttons stop
+    /// responding — replaced by an explicit setter to keep the two dictionaries in step
+    /// without a property observer.
+    @Published private(set) var gitStatusByPath: [String: GitFileStatus] = [:]
+
+    private func applyGitStatus(_ entries: [String: GitEntryStatus]) {
+        gitEntryStatusByPath = entries
+        gitStatusByPath = entries.compactMapValues(\.displayStatus)
     }
     @Published private(set) var contentRevision = 0
     @Published private(set) var rootStatusMessage: String?
@@ -843,7 +853,7 @@ final class FileExplorerStore: ObservableObject {
 
     func refreshGitStatus() {
         guard !rootPath.isEmpty else {
-            gitEntryStatusByPath = [:]
+            applyGitStatus([:])
             return
         }
         let path = rootPath
@@ -859,7 +869,7 @@ final class FileExplorerStore: ObservableObject {
                     identityFile: identity, sshOptions: opts
                 )
                 DispatchQueue.main.async { [weak self] in
-                    self?.gitEntryStatusByPath = status
+                    self?.applyGitStatus(status)
                 }
             }
         } else {
@@ -867,7 +877,7 @@ final class FileExplorerStore: ObservableObject {
             DispatchQueue.global(qos: .utility).async {
                 let status = gitStatusProvider.fetchStatus(directory: path)
                 DispatchQueue.main.async { [weak self] in
-                    self?.gitEntryStatusByPath = status
+                    self?.applyGitStatus(status)
                 }
             }
         }

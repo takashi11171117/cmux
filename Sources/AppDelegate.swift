@@ -7050,19 +7050,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     /// Opens the diff for one file in the code-review column.
     ///
-    /// `cmux diff` takes no file argument, but it reads a patch from stdin, so a single-file
-    /// patch produced here gives the same viewer scoped to one file.
+    /// `cmux diff` takes no file argument, but it reads a patch from stdin, so a
+    /// single-file patch produced here gives the same viewer scoped to one file.
     ///
     /// - Parameters:
     ///   - filePath: Absolute path of the changed file.
-    ///   - isUntracked: Whether git does not track the file yet. Untracked files produce no
-    ///     output from plain `git diff`, so they need `--no-index` against `/dev/null`.
+    ///   - side: Which side of the working-tree/index divide to render. Chosen by the
+    ///     caller because the Git sidebar's Staged Changes rows want `--cached` while
+    ///     Changes rows want the working-tree diff; picking the wrong side would render
+    ///     an empty patch and the row would silently do nothing.
     ///   - repositoryRoot: Directory to run git in.
     /// - Returns: `true` when a patch was produced and handed to the viewer.
     @discardableResult
     func openFileDiffInCodeReviewColumn(
         filePath: String,
-        isUntracked: Bool,
+        side: GitFilePatchCommand.Side,
         repositoryRoot: String
     ) -> Bool {
         guard let cliURL = Bundle.main.resourceURL?.appendingPathComponent("bin/cmux"),
@@ -7071,7 +7073,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }
         guard let patch = Self.singleFilePatch(
             filePath: filePath,
-            isUntracked: isUntracked,
+            side: side,
             repositoryRoot: repositoryRoot
         ), !patch.isEmpty else {
             return false
@@ -7113,7 +7115,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     /// Renders one commit's patch and hands it to the code-review column.
     ///
-    /// Same shape as ``openFileDiffInCodeReviewColumn(filePath:isUntracked:repositoryRoot:)``:
+    /// Same shape as ``openFileDiffInCodeReviewColumn(filePath:side:repositoryRoot:)``:
     /// build a patch, pipe it into the bundled `cmux diff -` CLI, land it in the column.
     /// The patch source is what differs — a whole commit rather than one file's working-tree
     /// changes.
@@ -7251,12 +7253,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     /// - Returns: The patch text, or `nil` when git could not be run.
     private static func singleFilePatch(
         filePath: String,
-        isUntracked: Bool,
+        side: GitFilePatchCommand.Side,
         repositoryRoot: String
     ) -> String? {
         let command = GitFilePatchCommand(
             filePath: filePath,
-            isUntracked: isUntracked,
+            side: side,
             hasHead: hasHead(repositoryRoot: repositoryRoot)
         )
         return gitOutput(arguments: command.arguments, repositoryRoot: repositoryRoot)

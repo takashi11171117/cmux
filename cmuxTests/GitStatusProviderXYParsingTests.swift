@@ -105,6 +105,22 @@ struct GitStatusProviderXYParsingTests {
         #expect(s?.displayStatus == .modified)
     }
 
+    @Test("Parsed file entries are not directory markers")
+    func fileEntriesAreNotDirectoryMarkers() {
+        let s = GitStatusProvider.parseXY(index: "M", workTree: " ")
+        #expect(s?.isDirectoryMarker == false)
+    }
+
+    @Test("A directory marker is flagged so the Git tab can drop it")
+    func directoryMarkerIsFlagged() {
+        // The provider synthesizes one entry per ancestor folder for the outline's
+        // colour marks. Without the flag those leaked into the Git tab as file rows
+        // (`M src` next to the real `src/` folder node).
+        let marker = GitEntryStatus(staged: nil, unstaged: .modified, isDirectoryMarker: true)
+        #expect(marker.isDirectoryMarker)
+        #expect(marker.displayStatus == .modified)
+    }
+
     @Test("displayStatus prefers unstaged so MM reads as \"modified\" in the file tree")
     func displayStatusPrefersUnstaged() {
         let mm = GitEntryStatus(staged: .modified, unstaged: .modified)

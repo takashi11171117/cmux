@@ -1,70 +1,84 @@
 import AppKit
 import SwiftUI
 
-/// The right sidebar's Git tab: the working tree's changed files, as a foldable tree.
+/// The right sidebar's Git tab: the working tree's changed files, split into "Staged
+/// Changes" and "Changes" sections — same shape as VS Code's Source Control panel.
 ///
-/// Reads ``FileExplorerStore/gitStatusByPath`` rather than running git itself. That store
-/// already refreshes on every directory-watch event and picks between the local and SSH
-/// providers, so a list that subscribes to it stays current on both without a timer or a
-/// second code path of its own.
+/// Reads ``FileExplorerStore/gitEntryStatusByPath`` rather than running git itself. That
+/// store already refreshes on every directory-watch event and picks between the local and
+/// SSH providers, so a list that subscribes to it stays current on both without a timer
+/// or a second code path of its own.
+///
+/// A file that is `MM` in git status (staged and further edited) appears in **both**
+/// sections. That is the whole reason for keeping the two sides split in
+/// ``GitEntryStatus``: opening the diff from the Staged row runs `git diff --cached`,
+/// opening it from the Changes row runs `git diff`, so the user sees exactly the slice
+/// each row promises.
 struct GitChangesPanelView: View {
     @ObservedObject var store: FileExplorerStore
 
-    /// Folder ids the user has folded shut. Owned here, above the `ForEach`, so no row below
-    /// that boundary holds observable state of its own (upstream #2586).
-    @State private var collapsedFolders: Set<String> = []
+    /// Folder ids collapsed inside the Staged Changes section. Owned above the `ForEach`
+    /// so no row below that boundary holds observable state of its own (upstream #2586).
+    /// Kept separate from ``unstagedCollapsedFolders`` so the two sections can be folded
+    /// independently — a folder full of staged changes and a folder full of unstaged
+    /// changes are different reading tasks.
+    @State private var stagedCollapsedFolders: Set<String> = []
+    @State private var unstagedCollapsedFolders: Set<String> = []
 
     var body: some View {
-        let entries = GitChangeEntry.entries(from: store.gitStatusByPath)
+        // Directory markers exist for the file-explorer outline's folder colouring; the
+        // Git tab builds its own folder tree from file paths, so they are noise here.
+        let entries = store.gitEntryStatusByPath.filter { !$0.value.isDirectoryMarker }
+        let stagedByPath: [String: GitFileStatus] = entries.compactMapValues(\.staged)
+        let unstagedByPath: [String: GitFileStatus] = entries.compactMapValues(\.unstaged)
+        let stagedRows = GitChangeEntry.entries(from: stagedByPath)
+        let unstagedRows = GitChangeEntry.entries(from: unstagedByPath)
         let root = store.rootPath
-        let rows = GitChangeTreeRow.rows(
-            entries: entries,
-            root: root,
-            collapsedFolders: collapsedFolders
-        )
-        // Same entry point the outline view uses for its change marks
-        // `[Sources/FileExplorerView.swift:122]`, so a file's colour is identical in both
-        // places. A second palette here would make one file look like two different things.
         let style = FileExplorerStyle.current
-        // Built once, above the `ForEach`: rows get closures, never the store.
-        let actions = GitChangeTreeActions(
-            openDiff: { entry in openDiff(for: entry, root: root) },
-            toggleFolder: { path in
-                if collapsedFolders.contains(path) {
-                    collapsedFolders.remove(path)
-                } else {
-                    collapsedFolders.insert(path)
-                }
-            }
-        )
 
         VStack(spacing: 0) {
+            // Count files, not rows: a file with both staged and unstaged edits (`MM`)
+            // appears in both sections but is one changed file, matching `git status`.
             header(changeCount: entries.count)
 
-            if entries.isEmpty {
+            if stagedRows.isEmpty && unstagedRows.isEmpty {
                 emptyState
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {
-                        ForEach(rows) { row in
-                            switch row.kind {
-                            case let .folder(isCollapsed, changeCount):
-                                GitChangeFolderRow(
-                                    name: row.name,
-                                    depth: row.depth,
-                                    isCollapsed: isCollapsed,
-                                    changeCount: changeCount,
-                                    onToggle: { actions.toggleFolder(row.id) }
-                                )
-                            case let .file(entry):
-                                GitChangeRow(
-                                    fileName: row.name,
-                                    depth: row.depth,
-                                    badge: entry.badge,
-                                    badgeColor: Color(nsColor: style.gitColor(for: entry.status)),
-                                    onOpen: { actions.openDiff(entry) }
-                                )
-                            }
+                        if !stagedRows.isEmpty {
+                            section(
+                                title: String(
+                                    localized: "git.staged.section",
+                                    defaultValue: "Staged Changes"
+                                ),
+                                rows: GitChangeTreeRow.rows(
+                                    entries: stagedRows,
+                                    root: root,
+                                    collapsedFolders: stagedCollapsedFolders
+                                ),
+                                style: style,
+                                side: .staged,
+                                root: root,
+                                onToggleFolder: toggleStagedFolder
+                            )
+                        }
+                        if !unstagedRows.isEmpty {
+                            section(
+                                title: String(
+                                    localized: "git.unstaged.section",
+                                    defaultValue: "Changes"
+                                ),
+                                rows: GitChangeTreeRow.rows(
+                                    entries: unstagedRows,
+                                    root: root,
+                                    collapsedFolders: unstagedCollapsedFolders
+                                ),
+                                style: style,
+                                side: .unstaged,
+                                root: root,
+                                onToggleFolder: toggleUnstagedFolder
+                            )
                         }
                     }
                     .padding(.vertical, 4)
@@ -74,15 +88,85 @@ struct GitChangesPanelView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    private func toggleStagedFolder(_ path: String) {
+        if stagedCollapsedFolders.contains(path) {
+            stagedCollapsedFolders.remove(path)
+        } else {
+            stagedCollapsedFolders.insert(path)
+        }
+    }
+
+    private func toggleUnstagedFolder(_ path: String) {
+        if unstagedCollapsedFolders.contains(path) {
+            unstagedCollapsedFolders.remove(path)
+        } else {
+            unstagedCollapsedFolders.insert(path)
+        }
+    }
+
+    @ViewBuilder
+    private func section(
+        title: String,
+        rows: [GitChangeTreeRow],
+        style: FileExplorerStyle,
+        side: GitStatusSide,
+        root: String,
+        onToggleFolder: @escaping (String) -> Void
+    ) -> some View {
+        GitChangesSectionHeader(title: title, count: rows.filter { row in
+            if case .file = row.kind { return true }
+            return false
+        }.count)
+
+        ForEach(rows) { row in
+            switch row.kind {
+            case let .folder(isCollapsed, changeCount):
+                GitChangeFolderRow(
+                    name: row.name,
+                    depth: row.depth,
+                    isCollapsed: isCollapsed,
+                    changeCount: changeCount,
+                    onToggle: { onToggleFolder(row.id) }
+                )
+            case let .file(entry):
+                GitChangeRow(
+                    fileName: row.name,
+                    depth: row.depth,
+                    badge: entry.badge,
+                    badgeColor: Color(nsColor: style.gitColor(for: entry.status)),
+                    // A closure, not the store: rows live under `ForEach` and holding an
+                    // observable reference there is what reintroduces the spin loop
+                    // this codebase already fixed (upstream #2586). Side is captured by
+                    // value so the diff picks the right git command.
+                    onOpen: { openDiff(for: entry, root: root, side: side) }
+                )
+            }
+        }
+    }
+
+    /// Which side (staged/unstaged) a section's rows come from.
+    private enum GitStatusSide {
+        case staged
+        case unstaged
+    }
+
     /// Opens one file's diff in the code-review column.
     ///
-    /// - Parameters:
-    ///   - entry: The clicked row.
-    ///   - root: Directory the list is rooted at, used as the git working directory.
-    private func openDiff(for entry: GitChangeEntry, root: String) {
+    /// The side matters for what git command runs:
+    /// - `.staged` → `git diff --cached -- <path>`
+    /// - `.unstaged` untracked → `git diff --no-index /dev/null <path>`
+    /// - `.unstaged` other → `git diff -- <path>`
+    private func openDiff(for entry: GitChangeEntry, root: String, side: GitStatusSide) {
+        let commandSide: GitFilePatchCommand.Side
+        switch side {
+        case .staged:
+            commandSide = .staged
+        case .unstaged:
+            commandSide = entry.status == .untracked ? .untracked : .unstaged
+        }
         _ = AppDelegate.shared?.openFileDiffInCodeReviewColumn(
             filePath: entry.path,
-            isUntracked: entry.status == .untracked,
+            side: commandSide,
             repositoryRoot: root
         )
     }
@@ -140,14 +224,26 @@ struct GitChangesPanelView: View {
     }
 }
 
-/// What a row can ask the panel to do.
-///
-/// A struct of closures built above the `ForEach`, following the same pattern as
-/// `IndexSectionActions` in `Sources/SessionIndexView.swift`: rows need behaviour, and this is
-/// how they get it without a reference to anything observable.
-private struct GitChangeTreeActions {
-    let openDiff: (GitChangeEntry) -> Void
-    let toggleFolder: (String) -> Void
+/// Section header for the Staged / Changes list. Kept as a small view rather than a
+/// bare Text so future affordances (a "stage all" button, a hint badge) attach without
+/// touching the outer list layout.
+private struct GitChangesSectionHeader: View {
+    let title: String
+    let count: Int
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text(title)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.secondary)
+            Text("\(count)")
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundStyle(.tertiary)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 10)
+        .frame(height: 20)
+    }
 }
 
 /// Leading inset shared by both row kinds, so badges and disclosure arrows line up per level.
@@ -204,8 +300,8 @@ private struct GitChangeFolderRow: View {
 
 /// One changed file in the Git tree.
 ///
-/// Takes plain values only. A row under a `ForEach` that reaches for the store — even to read
-/// one property — is what reintroduces the 100% CPU spin loop from upstream #2586.
+/// Takes plain values only. A row under a `ForEach` that reaches for the store — even to
+/// read one property — is what reintroduces the 100% CPU spin loop from upstream #2586.
 private struct GitChangeRow: View {
     let fileName: String
     let depth: Int

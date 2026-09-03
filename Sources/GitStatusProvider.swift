@@ -151,7 +151,8 @@ struct GitStatusProvider: Sendable {
         let dirDisplayStatus: GitFileStatus = (entryStatus.displayStatus == .untracked) ? .untracked : .modified
         let dirEntry = GitEntryStatus(
             staged: nil,
-            unstaged: dirDisplayStatus
+            unstaged: dirDisplayStatus,
+            isDirectoryMarker: true
         )
         var current = (absolutePath as NSString).deletingLastPathComponent
         while Self.path(current, isContainedIn: explorerRoot) && current != explorerRoot {

@@ -15,14 +15,14 @@ STAGE 01 のデータを使って UI を 2 セクションに分ける。行に�
 
 ## ✅ やること
 
-- [ ] `GitChangesPanelView` を 2 セクションに分ける
-- [ ] 各セクションで独立に `collapsedFolders` を持つ
-- [ ] 該当ファイル 0 のセクションは非表示
-- [ ] `GitFilePatchCommand` に `Side` 追加、既存の init を書き換え or 追加
-- [ ] `AppDelegate.openFileDiffInCodeReviewColumn` の引数を `side: Side` に
-- [ ] 呼び出し側を全部更新
-- [ ] `GitFilePatchCommandTests` を Side 3 通り × hasHead 2 通り に拡張
-- [ ] ローカライズ: `git.staged.section`, `git.unstaged.section`
+- [x] `GitChangesPanelView` を 2 セクションに分ける
+- [x] 各セクションで独立に `collapsedFolders` を持つ
+- [x] 該当ファイル 0 のセクションは非表示
+- [x] `GitFilePatchCommand` に `Side` 追加、既存の init を書き換え or 追加
+- [x] `AppDelegate.openFileDiffInCodeReviewColumn` の引数を `side: Side` に
+- [x] 呼び出し側を全部更新
+- [x] `GitFilePatchCommandTests` を Side 3 通り × hasHead 2 通り に拡張
+- [x] ローカライズ: `git.staged.section`, `git.unstaged.section`
 
 ## ⚠️ 落とし穴
 
