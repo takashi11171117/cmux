@@ -2318,11 +2318,12 @@ struct ContentView: View {
 
                     Spacer()
 
-                    // Shifted inboard of the right sidebar while it is open: its header owns
-                    // the same titlebar band, and the two icon sets otherwise land on top of
-                    // each other.
+                    // No trailing inset for the right sidebar here: `workspaceTitlebarBand`
+                    // already cedes that edge (`.padding(.trailing, rightSidebarWidth)`), so the
+                    // buttons land just left of the sidebar. Padding again inflated this
+                    // HStack's minimum width past the band, and the overflow slid under the
+                    // sidebar's mode bar and swallowed clicks on its leading buttons.
                     panelToggleButtons
-                        .padding(.trailing, rightSidebarVisible ? rightSidebarWidth : 0)
                 }
                 .frame(height: titlebarContentHeight)
                 .padding(.top, 2)

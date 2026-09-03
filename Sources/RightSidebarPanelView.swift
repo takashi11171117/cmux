@@ -267,6 +267,9 @@ struct RightSidebarPanelView: View {
                         )
                     ) {
                         let mode = item.mode
+#if DEBUG
+                        cmuxDebugLog("rs.modebar.tap mode=\(mode.rawValue) current=\(fileExplorerState.mode.rawValue)")
+#endif
                         if AppDelegate.shared?.focusRightSidebarInActiveMainWindow(
                             mode: mode,
                             focusFirstItem: true,
