@@ -410,7 +410,11 @@ if gh release view "$TAG" --repo "$GITHUB_REPO" >/dev/null 2>&1; then
     gh release upload "$TAG" "$DMG_NAME" appcast.xml --repo "$GITHUB_REPO"
   fi
 else
+  # --target pins the tag to the commit this DMG was built from. Without it GitHub tags
+  # the repository's default branch (main, which tracks upstream), so v1.0.4–v1.0.8 point
+  # at an upstream commit rather than the fork commit they were built from.
   gh release create "$TAG" "$DMG_NAME" appcast.xml --repo "$GITHUB_REPO" \
+    --target "$(git rev-parse HEAD)" \
     --title "$APP_DISPLAY_NAME $TAG" --notes "cmux AFIDE ${TAG}"
 fi
 
