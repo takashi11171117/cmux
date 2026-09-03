@@ -7256,27 +7256,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         side: GitFilePatchCommand.Side,
         repositoryRoot: String
     ) -> String? {
-        let command = GitFilePatchCommand(
-            filePath: filePath,
-            side: side,
-            hasHead: hasHead(repositoryRoot: repositoryRoot)
-        )
+        let command = GitFilePatchCommand(filePath: filePath, side: side)
         return gitOutput(arguments: command.arguments, repositoryRoot: repositoryRoot)
-    }
-
-    /// Whether the repository has a commit to diff against.
-    ///
-    /// `--verify --quiet` prints the resolved hash and says nothing when there is no `HEAD`,
-    /// so the emptiness of the output is the answer.
-    ///
-    /// - Parameter repositoryRoot: Directory to run git in.
-    /// - Returns: `false` before the first commit, or when git cannot be run.
-    private static func hasHead(repositoryRoot: String) -> Bool {
-        let output = gitOutput(
-            arguments: ["rev-parse", "--verify", "--quiet", "HEAD"],
-            repositoryRoot: repositoryRoot
-        )
-        return !(output ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     /// Runs git and returns its standard output.

@@ -28,7 +28,7 @@ struct GitStatusProvider: Sendable {
         // both to one spelling for the containment check, and emit keys under the caller's
         // spelling so FileExplorerStore lookups match.
         return parseGitStatus(
-            output: runGit(in: repoRoot, arguments: ["status", "--porcelain=v1", "-z"]),
+            output: runGit(in: repoRoot, arguments: ["status", "--porcelain=v1", "-z", "--untracked-files=all"]),
             repoRoot: Self.canonicalPath(repoRoot),
             explorerRoot: Self.canonicalPath(directory),
             keyRoot: directory
@@ -44,7 +44,7 @@ struct GitStatusProvider: Sendable {
             "cd '\(escapedDir)' 2>/dev/null",
             "\(Self.nonLockingRemoteGitCommand) rev-parse --show-toplevel 2>/dev/null",
             "echo '---GIT_STATUS---'",
-            "\(Self.nonLockingRemoteGitCommand) status --porcelain=v1 -z 2>/dev/null",
+            "\(Self.nonLockingRemoteGitCommand) status --porcelain=v1 -z --untracked-files=all 2>/dev/null",
         ].joined(separator: " && ")
         guard let output = runSSH(
             command: cmd, destination: destination,
@@ -118,11 +118,21 @@ struct GitStatusProvider: Sendable {
     /// the working-tree side (`git add` is what moves them to the index), and the Git tab
     /// needs them in the Changes section, not Staged Changes.
     ///
+    /// Unmerged pairs (`UU`, `AU`, `UD`, `AA`, `DD`, …) describe a conflict, not two
+    /// independent edits, so they map to a single working-tree `.modified` entry: the
+    /// conflicted file shows once, under Changes, and its row runs plain `git diff`,
+    /// which renders the combined conflict. Splitting the pair per character would list
+    /// the file under Staged Changes too, with a `--cached` patch that says nothing
+    /// useful about a conflict. A dedicated "Merge Changes" section is out of scope here.
+    ///
     /// Kept static so tests can exercise every XY without constructing a provider.
     static func parseXY(index: Character, workTree: Character) -> GitEntryStatus? {
         // Untracked is a paired sentinel, not a per-side mapping.
         if index == "?" && workTree == "?" {
             return GitEntryStatus(staged: nil, unstaged: .untracked)
+        }
+        if isUnmergedPair(index: index, workTree: workTree) {
+            return GitEntryStatus(staged: nil, unstaged: .modified)
         }
         let staged = mapStatusChar(index)
         let unstaged = mapStatusChar(workTree)
@@ -130,14 +140,22 @@ struct GitStatusProvider: Sendable {
         return GitEntryStatus(staged: staged, unstaged: unstaged)
     }
 
+    /// The conflict pairs `git status` documents: any `U` on either side, plus the
+    /// both-added (`AA`) and both-deleted (`DD`) cases that carry no `U`.
+    private static func isUnmergedPair(index: Character, workTree: Character) -> Bool {
+        if index == "U" || workTree == "U" { return true }
+        return (index == "A" && workTree == "A") || (index == "D" && workTree == "D")
+    }
+
     private static func mapStatusChar(_ c: Character) -> GitFileStatus? {
-        // ' ' means "no change on this side". '?' only appears in the ?? pair, handled above.
+        // ' ' means "no change on this side". '?' only appears in the ?? pair and 'U'
+        // only in unmerged pairs; both are handled before this mapping runs.
         switch c {
-        case "M", "T", "U": return .modified
-        case "A", "C":       return .added
-        case "D":            return .deleted
-        case "R":            return .renamed
-        default:             return nil
+        case "M", "T": return .modified
+        case "A", "C": return .added
+        case "D":      return .deleted
+        case "R":      return .renamed
+        default:       return nil
         }
     }
 

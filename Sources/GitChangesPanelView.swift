@@ -35,6 +35,15 @@ struct GitChangesPanelView: View {
         let unstagedRows = GitChangeEntry.entries(from: unstagedByPath)
         let root = store.rootPath
         let style = FileExplorerStyle.current
+        // Row diffs run local git against `root`. On an SSH root that path is remote, so
+        // local git would either fail or, worse, inspect an unrelated same-named local
+        // directory. Rows still render; opening a diff over SSH is not supported yet.
+        let canOpenDiff = store.provider is LocalFileExplorerProvider
+        // Built above the `ForEach` from the State projections, so the closures handed to
+        // rows capture a `Binding`, never `self` (which would drag `store` below the list
+        // boundary, upstream #2586).
+        let toggleStagedFolder = Self.folderToggler(for: $stagedCollapsedFolders)
+        let toggleUnstagedFolder = Self.folderToggler(for: $unstagedCollapsedFolders)
 
         VStack(spacing: 0) {
             // Count files, not rows: a file with both staged and unstaged edits (`MM`)
@@ -52,6 +61,7 @@ struct GitChangesPanelView: View {
                                     localized: "git.staged.section",
                                     defaultValue: "Staged Changes"
                                 ),
+                                count: stagedByPath.count,
                                 rows: GitChangeTreeRow.rows(
                                     entries: stagedRows,
                                     root: root,
@@ -60,6 +70,7 @@ struct GitChangesPanelView: View {
                                 style: style,
                                 side: .staged,
                                 root: root,
+                                canOpenDiff: canOpenDiff,
                                 onToggleFolder: toggleStagedFolder
                             )
                         }
@@ -69,6 +80,7 @@ struct GitChangesPanelView: View {
                                     localized: "git.unstaged.section",
                                     defaultValue: "Changes"
                                 ),
+                                count: unstagedByPath.count,
                                 rows: GitChangeTreeRow.rows(
                                     entries: unstagedRows,
                                     root: root,
@@ -77,6 +89,7 @@ struct GitChangesPanelView: View {
                                 style: style,
                                 side: .unstaged,
                                 root: root,
+                                canOpenDiff: canOpenDiff,
                                 onToggleFolder: toggleUnstagedFolder
                             )
                         }
@@ -88,35 +101,37 @@ struct GitChangesPanelView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private func toggleStagedFolder(_ path: String) {
-        if stagedCollapsedFolders.contains(path) {
-            stagedCollapsedFolders.remove(path)
-        } else {
-            stagedCollapsedFolders.insert(path)
+    /// A folder-toggle closure over one section's collapsed set.
+    ///
+    /// Static on purpose: the returned closure holds the `Binding` and nothing else, so
+    /// handing it to a row below the `ForEach` boundary carries no observable reference.
+    private static func folderToggler(for collapsed: Binding<Set<String>>) -> (String) -> Void {
+        { path in
+            if collapsed.wrappedValue.contains(path) {
+                collapsed.wrappedValue.remove(path)
+            } else {
+                collapsed.wrappedValue.insert(path)
+            }
         }
     }
 
-    private func toggleUnstagedFolder(_ path: String) {
-        if unstagedCollapsedFolders.contains(path) {
-            unstagedCollapsedFolders.remove(path)
-        } else {
-            unstagedCollapsedFolders.insert(path)
-        }
-    }
-
+    /// One section: its header, then its rows.
+    ///
+    /// - Parameter count: Files in the section. Passed in rather than derived from
+    ///   `rows`, which only lists what is visible — folding a folder must not make the
+    ///   header claim fewer changes.
     @ViewBuilder
     private func section(
         title: String,
+        count: Int,
         rows: [GitChangeTreeRow],
         style: FileExplorerStyle,
         side: GitStatusSide,
         root: String,
+        canOpenDiff: Bool,
         onToggleFolder: @escaping (String) -> Void
     ) -> some View {
-        GitChangesSectionHeader(title: title, count: rows.filter { row in
-            if case .file = row.kind { return true }
-            return false
-        }.count)
+        GitChangesSectionHeader(title: title, count: count)
 
         ForEach(rows) { row in
             switch row.kind {
@@ -134,11 +149,15 @@ struct GitChangesPanelView: View {
                     depth: row.depth,
                     badge: entry.badge,
                     badgeColor: Color(nsColor: style.gitColor(for: entry.status)),
-                    // A closure, not the store: rows live under `ForEach` and holding an
-                    // observable reference there is what reintroduces the spin loop
-                    // this codebase already fixed (upstream #2586). Side is captured by
-                    // value so the diff picks the right git command.
-                    onOpen: { openDiff(for: entry, root: root, side: side) }
+                    // Captures values only (entry, root, side, canOpenDiff) and calls a
+                    // static function: rows live under `ForEach`, and an observable
+                    // reference there is what reintroduces the spin loop this codebase
+                    // already fixed (upstream #2586). Side is captured by value so the
+                    // diff picks the right git command.
+                    onOpen: {
+                        guard canOpenDiff else { return }
+                        Self.openDiff(for: entry, root: root, side: side)
+                    }
                 )
             }
         }
@@ -156,7 +175,7 @@ struct GitChangesPanelView: View {
     /// - `.staged` → `git diff --cached -- <path>`
     /// - `.unstaged` untracked → `git diff --no-index /dev/null <path>`
     /// - `.unstaged` other → `git diff -- <path>`
-    private func openDiff(for entry: GitChangeEntry, root: String, side: GitStatusSide) {
+    private static func openDiff(for entry: GitChangeEntry, root: String, side: GitStatusSide) {
         let commandSide: GitFilePatchCommand.Side
         switch side {
         case .staged:

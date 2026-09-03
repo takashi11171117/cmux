@@ -213,6 +213,59 @@ struct FileExplorerGitStatusProviderTests {
         }
     }
 
+    @Test
+    func statusQuerySplitsRenameRecordsAndKeepsTheFollowingEntry() throws {
+        // `--porcelain=v1 -z` emits a rename as TWO NUL-terminated fields
+        // (`R  new\0old\0`). A parser that treats the old path as the next record would
+        // mislabel `old` as a change and lose the entry that really follows.
+        let repoURL = try Self.makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: repoURL) }
+        try Self.initializeRepo(at: repoURL)
+
+        let oldURL = repoURL.appendingPathComponent("old name.txt")
+        try "one\n".write(to: oldURL, atomically: true, encoding: .utf8)
+        try Self.runGit(["add", "."], in: repoURL)
+        try Self.runGit(["commit", "-m", "initial"], in: repoURL)
+        try Self.runGit(["mv", "old name.txt", "new name.txt"], in: repoURL)
+        let addedURL = repoURL.appendingPathComponent("after rename.txt")
+        try "two\n".write(to: addedURL, atomically: true, encoding: .utf8)
+        try Self.runGit(["add", "after rename.txt"], in: repoURL)
+
+        let status = GitStatusProvider().fetchStatus(directory: repoURL.path)
+
+        let renamed = status[repoURL.appendingPathComponent("new name.txt").path]
+        #expect(renamed?.staged == .renamed)
+        #expect(renamed?.unstaged == nil)
+        #expect(status[oldURL.path] == nil)
+        let added = status[addedURL.path]
+        #expect(added?.staged == .added)
+        #expect(added?.unstaged == nil)
+    }
+
+    @Test
+    func statusQueryListsUntrackedFilesIndividually() throws {
+        // Without `--untracked-files=all`, git reports a whole untracked directory as
+        // one `?? dir/` entry. That row cannot be opened as a single-file patch and is
+        // counted as one change no matter how many files it hides.
+        let repoURL = try Self.makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: repoURL) }
+        try Self.initializeRepo(at: repoURL)
+
+        let dirURL = repoURL.appendingPathComponent("fresh", isDirectory: true)
+        try FileManager.default.createDirectory(at: dirURL, withIntermediateDirectories: true)
+        let firstURL = dirURL.appendingPathComponent("a.txt")
+        let secondURL = dirURL.appendingPathComponent("b.txt")
+        try "a\n".write(to: firstURL, atomically: true, encoding: .utf8)
+        try "b\n".write(to: secondURL, atomically: true, encoding: .utf8)
+
+        let status = GitStatusProvider().fetchStatus(directory: repoURL.path)
+
+        #expect(status[firstURL.path]?.unstaged == .untracked)
+        #expect(status[secondURL.path]?.unstaged == .untracked)
+        // The directory itself only appears as the synthesized folder marker.
+        #expect(status[dirURL.path]?.isDirectoryMarker == true)
+    }
+
     private static func makeTemporaryDirectory() throws -> URL {
         let rootURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("cmux-file-explorer-git-status-\(UUID().uuidString)", isDirectory: true)

@@ -97,11 +97,19 @@ struct GitStatusProviderXYParsingTests {
         #expect(unstaged?.unstaged == .modified)
     }
 
-    @Test("`U` (unmerged) maps to modified so the sidebar shows the conflict as a change")
-    func unmergedMapsToModified() {
+    @Test(
+        "Unmerged pairs map to a single unstaged `modified` entry",
+        arguments: [("U", "U"), ("A", "U"), ("U", "D"), ("D", "U"), ("A", "A"), ("D", "D")]
+    )
+    func unmergedPairsMapToOneUnstagedModifiedEntry(index: String, workTree: String) {
         // Conflict-resolution UI is not in scope here (see docs/fork/git-stage/01
-        // 4.2). The row still needs to appear so the user knows the file exists.
-        let s = GitStatusProvider.parseXY(index: "U", workTree: "U")
+        // 4.2). The row still needs to appear so the user knows the file exists — but
+        // once, under Changes. Splitting the pair per character would also list it under
+        // Staged Changes with a `--cached` patch that says nothing useful about a
+        // conflict (Codex review of STAGE 02, finding 1.5).
+        let s = GitStatusProvider.parseXY(index: Character(index), workTree: Character(workTree))
+        #expect(s?.staged == nil)
+        #expect(s?.unstaged == .modified)
         #expect(s?.displayStatus == .modified)
     }
 
