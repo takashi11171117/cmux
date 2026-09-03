@@ -15,12 +15,12 @@ Changes セクションの行に `↺`（discard）を追加。押下で確認�
 
 ## ✅ やること
 
-- [ ] `GitStageOperation` に `discardUnstaged(...)`
-- [ ] 行に `↺` ボタン（Changes セクションのみ）
-- [ ] `NSAlert` で確認ダイアログ、破棄が失敗した理由をユーザーに提示
-- [ ] 未追跡ファイルは `FileManager.trashItem` で Trash に入れる（既存の Move to Trash
+- [x] `GitStageOperation` に `discardUnstaged(...)`
+- [x] 行に `↺` ボタン（Changes セクションのみ）
+- [x] `NSAlert` で確認ダイアログ、破棄が失敗した理由をユーザーに提示
+- [x] 未追跡ファイルは `FileManager.trashItem` で Trash に入れる（既存の Move to Trash
       と同じ扱い）
-- [ ] ローカライズ: `git.discard.action`, `git.discard.confirmTitle`, `git.discard.confirmBody`
+- [x] ローカライズ: `git.discard.action`, `git.discard.confirmTitle`, `git.discard.confirmBody`
 
 ## ⚠️ 落とし穴
 

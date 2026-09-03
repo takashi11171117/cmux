@@ -51,3 +51,12 @@ STAGE 04（Discard ボタン）
 - `ForEach` 配下に渡すクロージャは `self` を捕まえない（`Binding` と値だけ）。
   `store` が list 境界の下に流れると upstream #2586 のスピンループを再発させる
 
+## STAGE 03 / 04 で決めたこと（2026-09-03）
+
+- FR-S06: ボタンは **hover で右端**（`[設計判断]`）。`Button` で作り、行クリック（差分を開く）
+  にイベントが抜けないようにする
+- `GitStageOperation` は actor。untracked の discard は `FileExplorerFileOperation.moveToTrash`
+  （`@MainActor`）を `MainActor.run` で呼ぶ。テストは Trash 動作を注入して差し替える
+- discard の確認ダイアログは **Cancel が既定**（Return で誤爆しない）、Discard は
+  `hasDestructiveAction`
+- SSH ルートではボタンを無効化（ローカル git を remote パスで叩かない）

@@ -15,11 +15,11 @@ assignees: ''
 
 ## ✅ やること
 
-- [ ] `Sources/GitStageOperation.swift` を新設（actor）
-- [ ] Changes セクションの行に `+`、Staged セクションの行に `−`
-- [ ] hover / 常時 は実装中に判定して仕様書 §5 に書き戻す
-- [ ] 押下後に `store.refreshGitStatus()` を明示的に呼ぶ
-- [ ] ローカライズ: `git.stage.action`, `git.unstage.action`
+- [x] `Sources/GitStageOperation.swift` を新設（actor）
+- [x] Changes セクションの行に `+`、Staged セクションの行に `−`
+- [x] hover / 常時 は実装中に判定して仕様書 §5 に書き戻す
+- [x] 押下後に `store.refreshGitStatus()` を明示的に呼ぶ
+- [x] ローカライズ: `git.stage.action`, `git.unstage.action`
 
 ## ⚠️ 落とし穴
 

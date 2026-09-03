@@ -44,6 +44,13 @@ struct GitChangesPanelView: View {
         // boundary, upstream #2586).
         let toggleStagedFolder = Self.folderToggler(for: $stagedCollapsedFolders)
         let toggleUnstagedFolder = Self.folderToggler(for: $unstagedCollapsedFolders)
+        // Same shape as `IndexSectionActions` in SessionIndexView: closures built once here,
+        // capturing the store weakly, so rows below the `ForEach` hold no observable.
+        let stageActions = Self.makeStageActions(
+            root: root,
+            enabled: canOpenDiff,
+            refresh: { [weak store] in store?.refreshGitStatus() }
+        )
 
         VStack(spacing: 0) {
             // Count files, not rows: a file with both staged and unstaged edits (`MM`)
@@ -71,6 +78,7 @@ struct GitChangesPanelView: View {
                                 side: .staged,
                                 root: root,
                                 canOpenDiff: canOpenDiff,
+                                stageActions: stageActions,
                                 onToggleFolder: toggleStagedFolder
                             )
                         }
@@ -90,6 +98,7 @@ struct GitChangesPanelView: View {
                                 side: .unstaged,
                                 root: root,
                                 canOpenDiff: canOpenDiff,
+                                stageActions: stageActions,
                                 onToggleFolder: toggleUnstagedFolder
                             )
                         }
@@ -129,6 +138,7 @@ struct GitChangesPanelView: View {
         side: GitStatusSide,
         root: String,
         canOpenDiff: Bool,
+        stageActions: GitStageActions,
         onToggleFolder: @escaping (String) -> Void
     ) -> some View {
         GitChangesSectionHeader(title: title, count: count)
@@ -157,7 +167,12 @@ struct GitChangesPanelView: View {
                     onOpen: {
                         guard canOpenDiff else { return }
                         Self.openDiff(for: entry, root: root, side: side)
-                    }
+                    },
+                    // Changes rows stage or discard; Staged rows unstage. Each closure
+                    // captures the entry and the action bundle by value only.
+                    onStage: side == .unstaged ? { stageActions.stage(entry) } : nil,
+                    onUnstage: side == .staged ? { stageActions.unstage(entry) } : nil,
+                    onDiscard: side == .unstaged ? { stageActions.discard(entry) } : nil
                 )
             }
         }
@@ -167,6 +182,95 @@ struct GitChangesPanelView: View {
     private enum GitStatusSide {
         case staged
         case unstaged
+    }
+
+    /// One instance serves every row: the actor is stateless and only sequences `Process`
+    /// waits off the main thread.
+    private static let stageOperation = GitStageOperation()
+
+    /// Builds the row action bundle above the `ForEach`.
+    ///
+    /// - Parameters:
+    ///   - root: Repository directory the git commands run in.
+    ///   - enabled: `false` on an SSH root, where local git must not be run against a
+    ///     remote path; the closures then do nothing.
+    ///   - refresh: Re-reads git status after an operation so the sections update at once
+    ///     instead of waiting for the directory watcher.
+    private static func makeStageActions(
+        root: String,
+        enabled: Bool,
+        refresh: @escaping @MainActor () -> Void
+    ) -> GitStageActions {
+        let operation = stageOperation
+        return GitStageActions(
+            stage: { entry in
+                guard enabled else { return }
+                perform(refresh: refresh) {
+                    try await operation.stage(repositoryRoot: root, path: entry.path)
+                }
+            },
+            unstage: { entry in
+                guard enabled else { return }
+                perform(refresh: refresh) {
+                    try await operation.unstage(repositoryRoot: root, path: entry.path)
+                }
+            },
+            discard: { entry in
+                guard enabled, confirmDiscard(of: entry) else { return }
+                perform(refresh: refresh) {
+                    try await operation.discardUnstagedChanges(
+                        repositoryRoot: root,
+                        path: entry.path,
+                        isUntracked: entry.status == .untracked
+                    )
+                }
+            }
+        )
+    }
+
+    /// Runs one operation, reports a failure in the same sheet the file explorer uses, and
+    /// refreshes either way — a failed `git add` still may have changed the index.
+    private static func perform(
+        refresh: @escaping @MainActor () -> Void,
+        _ work: @escaping () async throws -> Void
+    ) {
+        Task { @MainActor in
+            do {
+                try await work()
+            } catch {
+                FileExplorerNamePrompt.presentFailure(error, window: NSApp.keyWindow)
+            }
+            refresh()
+        }
+    }
+
+    /// The confirmation before a discard (NFR-S03). Cancel is the default button so a
+    /// stray Return cannot throw work away; Discard is marked destructive.
+    private static func confirmDiscard(of entry: GitChangeEntry) -> Bool {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = String(
+            localized: "git.discard.confirmTitle",
+            defaultValue: "Discard changes to “\(entry.fileName)”?"
+        )
+        alert.informativeText = entry.status == .untracked
+            ? String(
+                localized: "git.discard.confirmBody.untracked",
+                defaultValue: "The file is moved to the Trash."
+            )
+            : String(
+                localized: "git.discard.confirmBody.tracked",
+                defaultValue: "The file goes back to its staged or committed content. This cannot be undone."
+            )
+        let discard = alert.addButton(withTitle: String(
+            localized: "git.discard.confirmButton",
+            defaultValue: "Discard"
+        ))
+        let cancel = alert.addButton(withTitle: String(localized: "common.cancel", defaultValue: "Cancel"))
+        discard.hasDestructiveAction = true
+        discard.keyEquivalent = ""
+        cancel.keyEquivalent = "\r"
+        return alert.runModal() == .alertFirstButtonReturn
     }
 
     /// Opens one file's diff in the code-review column.
@@ -241,6 +345,14 @@ struct GitChangesPanelView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+}
+
+/// What a file row can ask the panel to do, built once above the `ForEach`
+/// (same pattern as `IndexSectionActions` in `Sources/SessionIndexView.swift`).
+private struct GitStageActions {
+    let stage: (GitChangeEntry) -> Void
+    let unstage: (GitChangeEntry) -> Void
+    let discard: (GitChangeEntry) -> Void
 }
 
 /// Section header for the Staged / Changes list. Kept as a small view rather than a
@@ -327,6 +439,11 @@ private struct GitChangeRow: View {
     let badge: String
     let badgeColor: Color
     let onOpen: () -> Void
+    /// Row buttons, shown while hovered (FR-S06): `+` and `↺` on Changes rows, `−` on
+    /// Staged rows. `nil` hides the button for that row.
+    var onStage: (() -> Void)? = nil
+    var onUnstage: (() -> Void)? = nil
+    var onDiscard: (() -> Void)? = nil
 
     @State private var isHovered = false
 
@@ -343,6 +460,32 @@ private struct GitChangeRow: View {
                 .truncationMode(.middle)
 
             Spacer(minLength: 0)
+
+            if isHovered {
+                HStack(spacing: 2) {
+                    if let onDiscard {
+                        GitRowActionButton(
+                            symbol: "arrow.uturn.backward",
+                            help: String(localized: "git.discard.action", defaultValue: "Discard Changes"),
+                            action: onDiscard
+                        )
+                    }
+                    if let onStage {
+                        GitRowActionButton(
+                            symbol: "plus",
+                            help: String(localized: "git.stage.action", defaultValue: "Stage Changes"),
+                            action: onStage
+                        )
+                    }
+                    if let onUnstage {
+                        GitRowActionButton(
+                            symbol: "minus",
+                            help: String(localized: "git.unstage.action", defaultValue: "Unstage Changes"),
+                            action: onUnstage
+                        )
+                    }
+                }
+            }
         }
         .padding(.leading, GitChangeRowMetrics.leadingPadding(depth: depth))
         .padding(.trailing, 10)
@@ -355,5 +498,27 @@ private struct GitChangeRow: View {
             localized: "git.changes.openFileDiff",
             defaultValue: "Open this file's diff"
         ))
+    }
+}
+
+
+/// One hover button on a file row. A `Button` (not a tap gesture) so the click never
+/// reaches the row's own open-diff tap.
+private struct GitRowActionButton: View {
+    let symbol: String
+    let help: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 18, height: 18)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(help)
+        .accessibilityLabel(help)
     }
 }
