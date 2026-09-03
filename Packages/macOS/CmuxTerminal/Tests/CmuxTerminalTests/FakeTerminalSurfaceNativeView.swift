@@ -18,6 +18,7 @@ final class FakeTerminalSurfaceNativeView: NSView {
     var mobileMouseButtonEvents: [String] = []
 
     func toggleKeyboardCopyMode() -> Bool { false }
+    func copySelectionAsSingleLine() -> Bool { false }
     func applyWindowBackgroundIfActive() {}
     func forceRefreshSurface() -> Bool { true }
     func runtimeSurfaceDidBecomeReady() {}

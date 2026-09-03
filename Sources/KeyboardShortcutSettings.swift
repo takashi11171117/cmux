@@ -129,6 +129,7 @@ enum KeyboardShortcutSettings {
         case reopenClosedBrowserPanel
         case newSurface
         case toggleTerminalCopyMode
+        case copyTerminalSelectionAsSingleLine
         case focusTextBoxInput, cycleTextBoxSubmitAction, attachTextBoxFile
         case sendCtrlFToTerminal
         case clearScreenKeepScrollback
@@ -280,6 +281,7 @@ enum KeyboardShortcutSettings {
             case .reopenClosedBrowserPanel: return String(localized: "menu.history.reopenLastClosed", defaultValue: "Reopen Last Closed")
             case .newSurface: return String(localized: "shortcut.newSurface.label", defaultValue: "New Surface")
             case .toggleTerminalCopyMode: return String(localized: "shortcut.toggleTerminalCopyMode.label", defaultValue: "Toggle Terminal Copy Mode")
+            case .copyTerminalSelectionAsSingleLine: return String(localized: "shortcut.copyTerminalSelectionAsSingleLine.label", defaultValue: "Copy Selection as Single Line")
             case .focusTextBoxInput: return String(localized: "shortcut.focusTextBoxInput.label", defaultValue: "Focus TextBox Input")
             case .cycleTextBoxSubmitAction: return String(localized: "shortcut.cycleTextBoxSubmitAction.label", defaultValue: "Cycle TextBox Submit Action")
             case .attachTextBoxFile: return String(localized: "shortcut.attachTextBoxFile.label", defaultValue: "Attach File to TextBox Input")
@@ -570,6 +572,10 @@ enum KeyboardShortcutSettings {
                 return StoredShortcut(key: "t", command: true, shift: false, option: false, control: false)
             case .toggleTerminalCopyMode:
                 return StoredShortcut(key: "m", command: true, shift: true, option: false, control: false)
+            // Unbound by default: ⌘⇧C and friends are taken or app-wide; the context
+            // menu and command palette reach the same action, and Settings can bind it.
+            case .copyTerminalSelectionAsSingleLine:
+                return .unbound
             case .focusTextBoxInput: return StoredShortcut(key: "a", command: true, shift: true, option: false, control: false)
             case .cycleTextBoxSubmitAction: return StoredShortcut(key: "\t", command: false, shift: true, option: false, control: false)
             case .attachTextBoxFile: return StoredShortcut(key: "a", command: true, shift: true, option: true, control: false)

@@ -2517,6 +2517,8 @@ C0DE71B10000000000000001 /* AppDelegate+AgentChatNotifications.swift in Sources 
 		C75100020000000000000001 /* TerminalSelectionTranslation.swift in Sources */ = {isa = PBXBuildFile; fileRef = C75100020000000000000002 /* TerminalSelectionTranslation.swift */; };
 		C75100030000000000000001 /* TerminalSelectionTranslationAnchorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C75100030000000000000002 /* TerminalSelectionTranslationAnchorView.swift */; };
 		85510003A1B2C3D4E5F60001 /* TerminalShellResolver+CurrentUser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85510004A1B2C3D4E5F60001 /* TerminalShellResolver+CurrentUser.swift */; };
+		AFGI1114 /* TerminalSingleLineCopy.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFGI1014 /* TerminalSingleLineCopy.swift */; };
+		AFGI2110 /* TerminalSingleLineCopyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFGI2010 /* TerminalSingleLineCopyTests.swift */; };
 		A5001543 /* TerminalSSHSessionDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001545 /* TerminalSSHSessionDetector.swift */; };
 		D4A9923A0000000000000001 /* TerminalStartupRestoreCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A9923A0000000000000002 /* TerminalStartupRestoreCoordinator.swift */; };
 		99230001992300019923000E /* TerminalStartupRestoreFailureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99230001992300019923000D /* TerminalStartupRestoreFailureTests.swift */; };
@@ -5357,6 +5359,8 @@ C0DE71B10000000000000002 /* AppDelegate+AgentChatNotifications.swift */ = {isa =
 		C75100020000000000000002 /* TerminalSelectionTranslation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSelectionTranslation.swift; sourceTree = "<group>"; };
 		C75100030000000000000002 /* TerminalSelectionTranslationAnchorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSelectionTranslationAnchorView.swift; sourceTree = "<group>"; };
 		85510004A1B2C3D4E5F60001 /* TerminalShellResolver+CurrentUser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TerminalShellResolver+CurrentUser.swift"; sourceTree = "<group>"; };
+		AFGI1014 /* TerminalSingleLineCopy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSingleLineCopy.swift; sourceTree = "<group>"; };
+		AFGI2010 /* TerminalSingleLineCopyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSingleLineCopyTests.swift; sourceTree = "<group>"; };
 		A5001545 /* TerminalSSHSessionDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSSHSessionDetector.swift; sourceTree = "<group>"; };
 		D4A9923A0000000000000002 /* TerminalStartupRestoreCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalStartupRestoreCoordinator.swift; sourceTree = "<group>"; };
 		99230001992300019923000D /* TerminalStartupRestoreFailureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalStartupRestoreFailureTests.swift; sourceTree = "<group>"; };
@@ -7670,6 +7674,7 @@ C0DE71B10000000000000002 /* AppDelegate+AgentChatNotifications.swift */ = {isa =
 				AFGI1011 /* GitIgnoreProbe.swift */,
 				AFGI1012 /* GitEntryStatus.swift */,
 				AFGI1013 /* GitStageOperation.swift */,
+				AFGI1014 /* TerminalSingleLineCopy.swift */,
 				AFGD1001 /* GroupDirectoryFallback.swift */,
 				FE001006 /* GitStatusProvider.swift */,
 				AFGI1001 /* GitChangesPanelView.swift */,
@@ -8315,6 +8320,7 @@ C0DE71B10000000000000002 /* AppDelegate+AgentChatNotifications.swift */ = {isa =
 				AFGI200D /* GitGraphRendererTests.swift */,
 				AFGI200E /* GitStatusProviderXYParsingTests.swift */,
 				AFGI200F /* GitStageOperationTests.swift */,
+				AFGI2010 /* TerminalSingleLineCopyTests.swift */,
 				AFGD2001 /* GroupDirectoryFallbackTests.swift */,
 				6042B0026042B0026042B002 /* KeyboardShortcutModifierHoldHintsSettingsFileTests.swift */,
 				D5671102D5671102D5671102 /* TerminalScrollSpeedSettingsFileStoreTests.swift */,
@@ -10763,6 +10769,7 @@ C0DE71B10000000000000002 /* AppDelegate+AgentChatNotifications.swift */ = {isa =
 				C75100020000000000000001 /* TerminalSelectionTranslation.swift in Sources */,
 				C75100030000000000000001 /* TerminalSelectionTranslationAnchorView.swift in Sources */,
 				85510003A1B2C3D4E5F60001 /* TerminalShellResolver+CurrentUser.swift in Sources */,
+				AFGI1114 /* TerminalSingleLineCopy.swift in Sources */,
 				A5001543 /* TerminalSSHSessionDetector.swift in Sources */,
 				D4A9923A0000000000000001 /* TerminalStartupRestoreCoordinator.swift in Sources */,
 				D36A00090000000000000001 /* TerminalSurface+RendererRealizationSurface.swift in Sources */,
@@ -11873,6 +11880,7 @@ C0DE71B10000000000000002 /* AppDelegate+AgentChatNotifications.swift */ = {isa =
 				C0DE53360000000000000001 /* TerminalSearchOverlayMouseReleaseTests.swift in Sources */,
 				A11E5E1E0000000000000011 /* TerminalSelectionAccessibilityIngressGateTests.swift in Sources */,
 				A11E5E1E0000000000000003 /* TerminalSelectionAccessibilityNotifier.swift in Sources */,
+				AFGI2110 /* TerminalSingleLineCopyTests.swift in Sources */,
 				99230001992300019923000E /* TerminalStartupRestoreFailureTests.swift in Sources */,
 				D3052001000000000000001 /* TerminalSurfaceResizePolicyTests.swift in Sources */,
 				A91C0D0F0000000000000002 /* TerminalTabIconRegressionTests.swift in Sources */,

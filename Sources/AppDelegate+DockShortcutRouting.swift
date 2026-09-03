@@ -25,6 +25,7 @@ extension KeyboardShortcutSettings.Action {
              .reopenClosedBrowserPanel,
              .newSurface,
              .toggleTerminalCopyMode,
+             .copyTerminalSelectionAsSingleLine,
              .focusTextBoxInput, .attachTextBoxFile,
              .sendCtrlFToTerminal,
              .clearScreenKeepScrollback,

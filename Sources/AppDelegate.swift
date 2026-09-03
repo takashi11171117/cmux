@@ -14544,6 +14544,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             return handled
         }
 
+        if matchConfiguredShortcut(event: event, action: .copyTerminalSelectionAsSingleLine) {
+            if performFocusedDockShortcut(
+                .copyTerminalSelectionAsSingleLine,
+                action: .copyTerminalSelectionAsSingleLine,
+                event: event
+            ) {
+                return true
+            }
+            // Same rule as copy mode: consume only when a focused terminal copied.
+            return tabManager?.copyFocusedTerminalSelectionAsSingleLine() ?? false
+        }
+
         if matchConfiguredShortcut(event: event, action: .focusTextBoxInput) {
             if performFocusedDockShortcut(
                 .focusTextBoxInput,

@@ -26,6 +26,12 @@ extension ContentView {
                 subtitle: constant(String(localized: "command.sleepyMode.subtitle", defaultValue: "View")),
                 keywords: ["sleepy", "screensaver", "caffeinate", "keep awake", "do not sleep", "lock", "pets", "night"]
             ),
+            CommandPaletteCommandContribution(
+                commandId: "palette.copySelectionAsSingleLine",
+                title: constant(String(localized: "command.copySelectionAsSingleLine.title", defaultValue: "Copy Selection as Single Line")),
+                subtitle: constant(String(localized: "command.copySelectionAsSingleLine.subtitle", defaultValue: "Terminal")),
+                keywords: ["copy", "single line", "one line", "join", "newline", "line break", "改行"]
+            ),
         ]
     }
 
@@ -80,6 +86,9 @@ extension ContentView {
         }
         registry.register(commandId: "palette.sleepyMode") {
             SleepyModeController.shared.activate()
+        }
+        registry.register(commandId: "palette.copySelectionAsSingleLine") {
+            _ = tabManager.copyFocusedTerminalSelectionAsSingleLine()
         }
     }
 }

@@ -904,6 +904,15 @@ class TabManager: ObservableObject {
         return panel.surface.toggleKeyboardCopyMode()
     }
 
+    /// Copies the focused terminal's selection with line breaks removed.
+    ///
+    /// - Returns: `false` when no terminal is focused or nothing was copied.
+    @discardableResult
+    func copyFocusedTerminalSelectionAsSingleLine() -> Bool {
+        guard let panel = selectedTerminalPanel else { return false }
+        return panel.surface.copySelectionAsSingleLine()
+    }
+
     /// Forwards a single Ctrl-F (`^F`) key press to the focused terminal surface,
     /// faithfully encoded through Ghostty so it matches whatever the running TUI
     /// would receive from a real keystroke.

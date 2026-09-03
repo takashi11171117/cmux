@@ -5061,6 +5061,31 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         }
     }
 
+    /// Context-menu entry for "Copy as Single Line".
+    @IBAction func copySelectionAsSingleLine(_ sender: Any?) {
+        if !copySelectionAsSingleLine() {
+            NSSound.beep()
+        }
+    }
+
+    /// Copies the selection joined into one line (see `TerminalSingleLineCopy`).
+    ///
+    /// Shared by the context menu, the keyboard shortcut, the command palette, and the
+    /// dock so every entry point behaves the same.
+    ///
+    /// - Returns: `false` when there is no selection or it is only whitespace.
+    @discardableResult
+    func copySelectionAsSingleLine() -> Bool {
+        guard let surface,
+              let selectedText = readSelectionSnapshot(surface: surface)?.string else {
+            return false
+        }
+        let joined = TerminalSingleLineCopy.joined(selectedText)
+        guard !joined.isEmpty else { return false }
+        GhosttyApp.terminalPasteboard.writeString(joined, to: GHOSTTY_CLIPBOARD_STANDARD)
+        return true
+    }
+
     @IBAction func copyWorkspaceAndSurfaceIdentifiers(_ sender: Any?) {
         guard let terminalSurface else { return }
         let paneId = terminalSurface.owningWorkspace()?.paneId(forPanelId: terminalSurface.id)?.id
@@ -7304,6 +7329,19 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                 keyEquivalent: ""
             )
             item.target = self
+            let singleLineItem = menu.addItem(
+                withTitle: String(
+                    localized: "terminalContextMenu.copyAsSingleLine",
+                    defaultValue: "Copy as Single Line"
+                ),
+                action: #selector(copySelectionAsSingleLine(_:)),
+                keyEquivalent: ""
+            )
+            singleLineItem.target = self
+            applyConfiguredMenuShortcut(
+                KeyboardShortcutSettings.menuShortcut(for: .copyTerminalSelectionAsSingleLine),
+                to: singleLineItem
+            )
             addTranslateSelectionMenuItem(to: menu, surface: surface)
         }
         let pasteItem = menu.addItem(

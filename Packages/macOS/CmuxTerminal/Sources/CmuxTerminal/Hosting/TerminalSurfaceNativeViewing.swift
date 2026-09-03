@@ -27,6 +27,12 @@ public protocol TerminalSurfaceNativeViewing: NSView, TerminalSurfaceHosting {
     @discardableResult
     func toggleKeyboardCopyMode() -> Bool
 
+    /// Copies the current selection with its line breaks removed.
+    ///
+    /// - Returns: Whether something was copied.
+    @discardableResult
+    func copySelectionAsSingleLine() -> Bool
+
     /// Re-applies the window background for the active surface.
     func applyWindowBackgroundIfActive()
 
