@@ -57,6 +57,67 @@ struct DiffViewerURLSchemeHandlerLifecycleTests {
         #expect(!freshHandler.diffViewerRestorable(token: token, requestPath: "/index.html"))
     }
 
+    @Test(.timeLimit(.minutes(1)))
+    func sidecarSessionPatchPublishedAfterInstallIsServedAfterOneManifestReload() async throws {
+        // The viewer opens with one source, so the page's session is installed from the
+        // allowlist as it stood then. Switching source in place makes the sidecar write
+        // `diff-session-<uuid>.patch` and append it to the on-disk manifest only. Before
+        // the fix the in-memory snapshot never learned about it, the page's fetch failed
+        // with "Load failed", and every source but the opening one showed
+        // "Could not render this diff".
+        let token = UUID().uuidString.lowercased()
+        let rootURL = CmuxDiffViewerSessionPreparer.defaultTrustedRootURL
+        let fixtureURL = rootURL.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let pageURL = fixtureURL.appendingPathComponent("viewer.html", isDirectory: false)
+        let sessionPatchURL = fixtureURL.appendingPathComponent("session.patch", isDirectory: false)
+        let latePageURL = fixtureURL.appendingPathComponent("late.html", isDirectory: false)
+        let manifestURL = rootURL.appendingPathComponent(".manifest-\(token).json", isDirectory: false)
+        let leaseURL = rootURL.appendingPathComponent(".session-lease-\(token).lock", isDirectory: false)
+        try FileManager.default.createDirectory(at: fixtureURL, withIntermediateDirectories: true)
+        try "<!doctype html><title>viewer</title>".write(to: pageURL, atomically: true, encoding: .utf8)
+        try "diff --git a/f b/f\n".write(to: sessionPatchURL, atomically: true, encoding: .utf8)
+        try "<!doctype html><title>late</title>".write(to: latePageURL, atomically: true, encoding: .utf8)
+        defer {
+            try? FileManager.default.removeItem(at: leaseURL)
+            try? FileManager.default.removeItem(at: manifestURL)
+            try? FileManager.default.removeItem(at: fixtureURL)
+        }
+
+        let handler = CmuxDiffViewerURLSchemeHandler()
+        try await handler.register(
+            token: token,
+            files: [.init(requestPath: "/viewer.html", fileURL: pageURL, mimeType: "text/html")]
+        )
+
+        let sessionPath = "/diff-session-\(UUID().uuidString).patch"
+        let manifest: [String: Any] = [
+            "token": token,
+            "files": [
+                ["request_path": "/viewer.html", "file_path": pageURL.path, "mime_type": "text/html"],
+                ["request_path": sessionPath, "file_path": sessionPatchURL.path, "mime_type": "text/x-diff"],
+                ["request_path": "/late.html", "file_path": latePageURL.path, "mime_type": "text/html"],
+            ],
+        ]
+        try JSONSerialization.data(withJSONObject: manifest).write(to: manifestURL, options: .atomic)
+
+        let scheme = CmuxDiffViewerURLSchemeHandler.scheme
+        let lateURL = try #require(URL(string: "\(scheme)://\(token)/late.html"))
+        let sessionURL = try #require(URL(string: "\(scheme)://\(token)\(sessionPath)"))
+        let bogusURL = try #require(URL(string: "\(scheme)://\(token)/diff-session-not-a-uuid.patch"))
+
+        // Ordinary misses stay cache-only: a page cannot make the handler re-read the
+        // manifest by asking for arbitrary paths.
+        #expect(await handler.registeredFileReloadingSidecarSessionPatch(for: lateURL) == nil)
+        #expect(await handler.registeredFileReloadingSidecarSessionPatch(for: bogusURL) == nil)
+        #expect(!CmuxDiffViewerURLSchemeHandler.isSidecarSessionPatchPath("/diff-session-not-a-uuid.patch"))
+        #expect(CmuxDiffViewerURLSchemeHandler.isSidecarSessionPatchPath(sessionPath))
+
+        // The sidecar's session patch triggers exactly one manifest reload and is served.
+        let served = await handler.registeredFileReloadingSidecarSessionPatch(for: sessionURL)
+        #expect(served?.requestPath == sessionPath)
+        #expect(served?.mimeType == "text/x-diff")
+    }
+
     @Test
     func oversizedAllowlistIsRejectedAtRegistrationBoundary() async {
         let handler = CmuxDiffViewerURLSchemeHandler()

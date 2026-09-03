@@ -153,10 +153,11 @@ final class CmuxDiffViewerURLSchemeHandler: NSObject, WKURLSchemeHandler {
             return
         }
 
-        guard let file = registeredFile(for: requestURL) else {
+        guard let file = await registeredFileReloadingSidecarSessionPatch(for: requestURL) else {
             failSchemeTask(taskID, generation: generation, code: NSURLErrorFileDoesNotExist)
             return
         }
+        guard isSchemeTaskActive(taskID, generation: generation) else { return }
         await streamFile(
             file,
             requestURL: requestURL,
@@ -460,6 +461,43 @@ final class CmuxDiffViewerURLSchemeHandler: NSObject, WKURLSchemeHandler {
 
     nonisolated static func isValidToken(_ token: String) -> Bool {
         CmuxDiffViewerSessionPreparer.isValidToken(token)
+    }
+
+    /// Whether a request path names a patch that `cmux-diff-sidecar` publishes for an
+    /// in-place source switch (`/diff-session-<uuid>.patch`, see
+    /// `Native/DiffSidecar/src/server.rs`).
+    nonisolated static func isSidecarSessionPatchPath(_ path: String) -> Bool {
+        let prefix = "/diff-session-"
+        let suffix = ".patch"
+        guard path.hasPrefix(prefix), path.hasSuffix(suffix),
+              path.count > prefix.count + suffix.count else { return false }
+        let identifier = path.dropFirst(prefix.count).dropLast(suffix.count)
+        return UUID(uuidString: String(identifier)) != nil
+    }
+
+    /// The allowlisted file for a request, reloading the manifest once when the request
+    /// is for a sidecar session patch that was published after the session was installed.
+    ///
+    /// Switching the viewer's source in place asks `cmux-diff-sidecar` for a new patch.
+    /// The sidecar writes `/diff-session-<uuid>.patch` and appends it to the on-disk
+    /// manifest, but the in-memory allowlist is the snapshot taken when the page was
+    /// registered, so the page's fetch of that patch missed and the viewer showed
+    /// "Could not render this diff" for every source but the one it opened with.
+    ///
+    /// Only that exact path shape triggers a reload. Every other miss stays cache-only,
+    /// as before, so a page cannot force repeated manifest reads; the reload itself goes
+    /// through ``registerFromManifest(token:now:)`` and keeps all of its validation.
+    func registeredFileReloadingSidecarSessionPatch(for requestURL: URL) async -> RegisteredFile? {
+        if let file = registeredFile(for: requestURL) {
+            return file
+        }
+        guard let token = requestURL.host,
+              let requestPath = Self.requestPath(for: requestURL),
+              Self.isSidecarSessionPatchPath(requestPath),
+              await registerFromManifest(token: token) else {
+            return nil
+        }
+        return registeredFile(for: requestURL)
     }
 
     nonisolated static func isValidRequestPath(_ path: String) -> Bool {
