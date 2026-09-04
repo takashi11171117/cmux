@@ -9916,6 +9916,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             onToggleSleepyMode: {
                 SleepyModeController.shared.toggle()
             },
+            onSleepDisplay: { [weak self] in
+                self?.sleepDisplayNow()
+            },
             onCheckForUpdates: { [weak self] in
                 self?.checkForUpdates(nil)
             },
@@ -9926,6 +9929,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 NSApp.terminate(nil)
             }
         )
+    }
+
+    /// Turns the display off now, leaving the Mac running.
+    ///
+    /// The one path behind the menu bar's "Sleep Display Now" and the command palette
+    /// entry. Reuses Sleepy Mode's existing power adapter rather than shelling out to
+    /// `pmset` a second time, so both surfaces run the same command.
+    func sleepDisplayNow() {
+        let power = SleepyModeController.shared.powerControls
+        Task { await power.sleepDisplayNow() }
     }
 
     func toggleGlobalSearchPalette() {

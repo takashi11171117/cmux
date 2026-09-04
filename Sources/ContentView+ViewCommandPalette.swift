@@ -27,6 +27,12 @@ extension ContentView {
                 keywords: ["sleepy", "screensaver", "caffeinate", "keep awake", "do not sleep", "lock", "pets", "night"]
             ),
             CommandPaletteCommandContribution(
+                commandId: "palette.sleepDisplay",
+                title: constant(String(localized: "command.sleepDisplay.title", defaultValue: "Sleep Display Now")),
+                subtitle: constant(String(localized: "command.sleepDisplay.subtitle", defaultValue: "System")),
+                keywords: ["sleep", "display", "screen", "monitor", "off", "blank", "画面", "ディスプレイ", "消す"]
+            ),
+            CommandPaletteCommandContribution(
                 commandId: "palette.copySelectionAsSingleLine",
                 title: constant(String(localized: "command.copySelectionAsSingleLine.title", defaultValue: "Copy Selection as Single Line")),
                 subtitle: constant(String(localized: "command.copySelectionAsSingleLine.subtitle", defaultValue: "Terminal")),
@@ -86,6 +92,9 @@ extension ContentView {
         }
         registry.register(commandId: "palette.sleepyMode") {
             SleepyModeController.shared.activate()
+        }
+        registry.register(commandId: "palette.sleepDisplay") {
+            AppDelegate.shared?.sleepDisplayNow()
         }
         registry.register(commandId: "palette.copySelectionAsSingleLine") {
             _ = tabManager.copyFocusedTerminalSelectionAsSingleLine()
