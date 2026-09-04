@@ -26,6 +26,18 @@ final class FileExplorerCellView: NSTableCellView, NSTextFieldDelegate {
     /// Callback fired when the user cancels the rename (`Esc`).
     var onRenameCancel: (() -> Void)?
 
+    #if DEBUG
+    /// The text the row is currently showing. Test seam: a recycled cell must display the
+    /// new row's name, never the text left in the field editor by an abandoned rename.
+    var displayedNameForTesting: String { nameLabel.stringValue }
+    #endif
+
+    /// Whether this cell is currently hosting an inline rename.
+    ///
+    /// The coordinator reads it to hold tree refreshes while the user types, so the row
+    /// being edited is not recycled out from under the field editor.
+    var isRenamingActive: Bool { isRenaming }
+
     var onHover: ((Bool) -> Void)?
     private var nameLabelTrailingToLoadingConstraint: NSLayoutConstraint!
     private var nameLabelTrailingToContainerConstraint: NSLayoutConstraint!
@@ -110,6 +122,10 @@ final class FileExplorerCellView: NSTableCellView, NSTextFieldDelegate {
 
     func configure(with node: FileExplorerNode, gitStatus: GitFileStatus? = nil) {
         assert(Thread.isMainThread, "AppKit image updates must run on the main thread")
+        // Cells are recycled by the outline view. One that still carried the previous
+        // row's rename callbacks would apply the typed name to *that* row's file while
+        // this row displays it — the "the name only changed on screen" report.
+        resetRenameState()
         let style = FileExplorerStyle.current
         // Ignored rows render at half opacity — VS Code convention. The rest of the row
         // (icon, spinner) inherits via `alphaValue` on the whole cell.
@@ -227,6 +243,25 @@ final class FileExplorerCellView: NSTableCellView, NSTextFieldDelegate {
         } else {
             editor.selectAll(nil)
         }
+    }
+
+    /// Disarms any rename left on a recycled cell.
+    ///
+    /// Deliberately does not run the commit or cancel callbacks: the cell is about to
+    /// represent a different row, so neither belongs to it any more. The label is
+    /// rewritten by ``configure(with:gitStatus:)`` immediately after.
+    private func resetRenameState() {
+        if isRenaming {
+            isRenaming = false
+            nameLabel.isEditable = false
+            nameLabel.isSelectable = false
+            if nameLabel.currentEditor() != nil {
+                window?.makeFirstResponder(nil)
+            }
+        }
+        renameOriginalName = ""
+        onRenameCommit = nil
+        onRenameCancel = nil
     }
 
     private func endRename(commit: Bool) {

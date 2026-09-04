@@ -94,6 +94,19 @@ struct FileExplorerPanelView: NSViewRepresentable {
         weak var containerView: FileExplorerContainerView?
         weak var outlineView: NSOutlineView?
         private var lastRootNodeCount: Int = -1
+        /// Child-path fingerprints per directory, so a directory is only reloaded when its
+        /// listing actually changed. `reloadItem(_:reloadChildren:)` rebuilds every cell
+        /// beneath the node and re-resolves its icons; running it for every directory on
+        /// every store update is a visible flicker.
+        private var lastChildSignatures: [String: Int] = [:]
+        /// Fingerprint of everything the visible cells actually draw (git colour, ignored
+        /// dimming, spinner). Cells are only re-rendered when this changes, so a store
+        /// update that touched nothing visible does not rebuild the rows.
+        private var lastVisibleAppearanceSignature: Int?
+        /// The cell hosting an inline rename, if any.
+        weak var renamingCell: FileExplorerCellView?
+        /// A refresh that arrived while the user was renaming, replayed once the edit ends.
+        private var hasReloadPendingDuringRename = false
         private var observationCancellable: AnyCancellable?
         private var styleObserver: Any?
         private var isUpdatingOutlineProgrammatically = false
@@ -170,9 +183,27 @@ struct FileExplorerPanelView: NSViewRepresentable {
                 }
         }
 
+        /// Re-runs a refresh that was held back during an inline rename.
+        @MainActor
+        func flushReloadAfterRename() {
+            renamingCell = nil
+            guard hasReloadPendingDuringRename else { return }
+            hasReloadPendingDuringRename = false
+            reloadIfNeeded()
+        }
+
         @MainActor
         func reloadIfNeeded() {
             guard let outlineView else { return }
+
+            // Rebuilding rows while the field editor is up recycles the edited cell:
+            // AppKit resigns first responder, the commit fires against whatever row the
+            // cell used to hold, and the tree ends up showing a name no file ever got.
+            // Hold the refresh; `flushReloadAfterRename()` replays it.
+            if renamingCell?.isRenamingActive == true {
+                hasReloadPendingDuringRename = true
+                return
+            }
 
             // Update empty state vs tree visibility
             containerView?.updateVisibility(
@@ -183,16 +214,46 @@ struct FileExplorerPanelView: NSViewRepresentable {
 
             let newCount = store.rootNodes.count
             withProgrammaticOutlineUpdate {
+                var didRebuildEveryRow = false
                 if newCount != lastRootNodeCount {
                     lastRootNodeCount = newCount
                     let expandedPaths = store.expandedPaths
                     outlineView.reloadData()
                     restoreExpansionState(expandedPaths, in: outlineView)
+                    didRebuildEveryRow = true
                 } else {
                     refreshLoadedNodes(in: outlineView)
                 }
+                refreshVisibleAppearance(in: outlineView, alreadyRebuilt: didRebuildEveryRow)
                 applyStoredSelection(in: outlineView, fallbackToFirstVisible: false, scroll: false)
             }
+        }
+
+        /// Re-renders the rows when what they draw changed, without touching structure.
+        ///
+        /// Git colour and the ignored-file dimming live in the cell, so a status change has
+        /// to reach `viewFor`. Reloading every directory on every store update did that too,
+        /// but rebuilt the whole tree each time — the flicker. This narrows it to "the rows
+        /// on screen, only when their appearance inputs actually moved".
+        private func refreshVisibleAppearance(in outlineView: NSOutlineView, alreadyRebuilt: Bool) {
+            let rowCount = outlineView.numberOfRows
+            var hasher = Hasher()
+            for row in 0..<rowCount {
+                guard let node = outlineView.item(atRow: row) as? FileExplorerNode else { continue }
+                hasher.combine(node.path)
+                hasher.combine(store.gitStatusByPath[node.path])
+                hasher.combine(node.isIgnored)
+                hasher.combine(node.isLoading)
+            }
+            let signature = hasher.finalize()
+            defer { lastVisibleAppearanceSignature = signature }
+            guard !alreadyRebuilt,
+                  lastVisibleAppearanceSignature != signature,
+                  rowCount > 0 else { return }
+            outlineView.reloadData(
+                forRowIndexes: IndexSet(integersIn: 0..<rowCount),
+                columnIndexes: IndexSet(integer: 0)
+            )
         }
 
         private func restoreExpansionState(_ expandedPaths: Set<String>, in outlineView: NSOutlineView) {
@@ -211,12 +272,20 @@ struct FileExplorerPanelView: NSViewRepresentable {
                     let isCurrentlyExpanded = outlineView.isItemExpanded(node)
                     let shouldBeExpanded = store.expandedPaths.contains(node.path)
 
+                    let signature = node.children?.map(\.path).hashValue
+                    let listingChanged = lastChildSignatures[node.path] != signature
+                    if let signature {
+                        lastChildSignatures[node.path] = signature
+                    } else {
+                        lastChildSignatures.removeValue(forKey: node.path)
+                    }
+
                     if shouldBeExpanded && !isCurrentlyExpanded && node.children != nil {
                         outlineView.reloadItem(node, reloadChildren: true)
                         outlineView.expandItem(node)
                     } else if !shouldBeExpanded && isCurrentlyExpanded {
                         outlineView.collapseItem(node)
-                    } else if node.children != nil {
+                    } else if node.children != nil, listingChanged {
                         outlineView.reloadItem(node, reloadChildren: true)
                         if shouldBeExpanded {
                             outlineView.expandItem(node)

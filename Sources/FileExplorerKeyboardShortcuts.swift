@@ -50,16 +50,25 @@ extension FileExplorerPanelView.Coordinator {
               let cell = outlineView.view(atColumn: 0, row: row, makeIfNecessary: false)
                 as? FileExplorerCellView
         else { return }
-        cell.onRenameCommit = { [weak self] newName in
+        // The path is re-read from the node at commit time rather than captured as a
+        // string here: a refresh between arming and committing can replace the row, and
+        // renaming a path that moved would either fail or hit the wrong file.
+        let renamedPath = node.path
+        cell.onRenameCommit = { [weak self, weak cell] newName in
             guard let self else { return }
+            if self.renamingCell === cell { self.flushReloadAfterRename() }
             self.perform {
                 _ = try FileExplorerFileOperation.rename(
-                    URL(fileURLWithPath: node.path),
+                    URL(fileURLWithPath: renamedPath),
                     to: newName
                 )
             }
         }
-        cell.onRenameCancel = { }
+        cell.onRenameCancel = { [weak self, weak cell] in
+            guard let self, self.renamingCell === cell else { return }
+            self.flushReloadAfterRename()
+        }
+        renamingCell = cell
         cell.beginRename()
     }
 

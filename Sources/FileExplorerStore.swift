@@ -942,7 +942,7 @@ final class FileExplorerStore: ObservableObject {
             directoryWatchTask = Task { @MainActor [weak self] in
                 for await _ in events {
                     guard let self else { break }
-                    self.reload()
+                    self.refreshFromDisk()
                     self.refreshGitStatus()
                 }
             }
@@ -997,6 +997,36 @@ final class FileExplorerStore: ObservableObject {
             await self.loadChildren(for: nil, at: path)
         }
         loadTasks[rootPath] = task
+    }
+
+    /// Re-reads the visible tree from disk without tearing it down.
+    ///
+    /// ``reload()`` empties ``rootNodes`` and refills them asynchronously, so the outline
+    /// view draws an empty list for a frame and then repopulates, re-expanding as it goes.
+    /// The directory watcher fires on every write under the root, which turned that into a
+    /// constant blink whenever anything (an agent, a build, git) touched files. This path
+    /// keeps every existing node object, re-lists the directories that are actually on
+    /// screen, and publishes only what changed.
+    func refreshFromDisk() {
+        guard !rootPath.isEmpty, provider != nil else { return }
+        let path = rootPath
+        loadTasks[path]?.cancel()
+        let task = Task { [weak self] in
+            guard let self else { return }
+            await self.loadChildren(for: nil, at: path, silent: true, preserving: true)
+        }
+        loadTasks[path] = task
+    }
+
+    /// Drops a node and its descendants from the path index.
+    ///
+    /// Called when a preserving refresh finds an entry gone, so a later listing cannot
+    /// reuse the node of a file that no longer exists.
+    private func forgetSubtree(_ node: FileExplorerNode) {
+        nodesByPath.removeValue(forKey: node.path)
+        for child in node.children ?? [] {
+            forgetSubtree(child)
+        }
     }
 
     func expand(node: FileExplorerNode) {
@@ -1090,7 +1120,19 @@ final class FileExplorerStore: ObservableObject {
     // MARK: - Private
 
     @MainActor
-    private func loadChildren(for parentNode: FileExplorerNode?, at path: String, silent: Bool = false) async {
+    /// Lists `path` and installs the result.
+    ///
+    /// - Parameters:
+    ///   - preserving: Reuse the node objects already indexed for the listed paths, and
+    ///     publish only when the listing differs. Row identity is what lets the outline
+    ///     view keep its rows, expansion, and selection across a refresh; a fresh object
+    ///     per listing forces a full `reloadData()`, which is visible as a blink.
+    private func loadChildren(
+        for parentNode: FileExplorerNode?,
+        at path: String,
+        silent: Bool = false,
+        preserving: Bool = false
+    ) async {
         // A load cancelled by cancelAllLoads (e.g. a root reload during an SSH provider swap) must not
         // reach provider.listDirectory: the provider may have been replaced, so a stale in-flight load
         // would list the old path through the new transport. Bail before any listing.
@@ -1106,7 +1148,12 @@ final class FileExplorerStore: ObservableObject {
         do {
             let entries = try await provider.listDirectory(path: path, showHidden: showHiddenFiles)
             try Task.checkCancellation()
-            let children = entries.map { entry in
+            let children = entries.map { entry -> FileExplorerNode in
+                if preserving,
+                   let existing = nodesByPath[entry.path],
+                   existing.isDirectory == entry.isDirectory {
+                    return existing
+                }
                 let node = FileExplorerNode(name: entry.name, path: entry.path, isDirectory: entry.isDirectory)
                 nodesByPath[entry.path] = node
                 return node
@@ -1116,8 +1163,19 @@ final class FileExplorerStore: ObservableObject {
             }
 
             applyGitIgnore(to: children)
+            // Re-assigning an identical listing still drives `reloadItem` in the outline
+            // view, and doing that on every watcher tick is the flicker itself. Compare
+            // first and stay silent when nothing moved.
+            let previousChildren = parentNode.map { $0.children } ?? rootNodes
+            let childrenChanged = previousChildren?.map(\.path) != children.map(\.path)
+            if childrenChanged, let previousChildren {
+                let surviving = Set(children.map(\.path))
+                for dropped in previousChildren where !surviving.contains(dropped.path) {
+                    forgetSubtree(dropped)
+                }
+            }
             if let parentNode {
-                parentNode.children = children
+                if childrenChanged || !preserving { parentNode.children = children }
                 parentNode.isLoading = false
                 parentNode.error = nil
                 if pendingDescendIntoFirstChildPath == parentNode.path {
@@ -1127,7 +1185,7 @@ final class FileExplorerStore: ObservableObject {
                     pendingDescendIntoFirstChildPath = nil
                 }
             } else {
-                rootNodes = children
+                if childrenChanged || !preserving { rootNodes = children }
                 isRootLoading = false
                 setRootStatusMessage(nil)
                 if selectedPath == nil {
@@ -1137,18 +1195,31 @@ final class FileExplorerStore: ObservableObject {
             }
             loadingPaths.remove(path)
             loadTasks.removeValue(forKey: path)
-            objectWillChange.send()
+            if childrenChanged || !preserving { objectWillChange.send() }
 
-            // Auto-expand children that were previously expanded
-            for child in children where child.isDirectory && expandedPaths.contains(child.path) {
-                child.isLoading = true
-                objectWillChange.send()
+            // Walk on: expanded children are (re)loaded, and a preserving refresh also
+            // re-lists directories whose contents are already on screen, so a change three
+            // levels down is picked up without collapsing anything.
+            for child in children where child.isDirectory {
+                let isLoaded = child.children != nil
+                let shouldRefresh = preserving && isLoaded
+                guard expandedPaths.contains(child.path) || shouldRefresh else { continue }
                 let childPath = child.path
-                let childTask = Task { [weak self] in
-                    guard let self else { return }
-                    await self.loadChildren(for: child, at: childPath)
+                if shouldRefresh {
+                    let childTask = Task { [weak self] in
+                        guard let self else { return }
+                        await self.loadChildren(for: child, at: childPath, silent: true, preserving: true)
+                    }
+                    loadTasks[childPath] = childTask
+                } else {
+                    child.isLoading = true
+                    objectWillChange.send()
+                    let childTask = Task { [weak self] in
+                        guard let self else { return }
+                        await self.loadChildren(for: child, at: childPath, preserving: preserving)
+                    }
+                    loadTasks[childPath] = childTask
                 }
-                loadTasks[child.path] = childTask
             }
         } catch {
             if !Task.isCancelled {

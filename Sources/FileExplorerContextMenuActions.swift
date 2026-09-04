@@ -142,7 +142,10 @@ extension FileExplorerPanelView.Coordinator {
     func perform(_ work: () throws -> Void) {
         do {
             try work()
-            store.reload()
+            // Refresh rather than reload: the tree keeps its rows, expansion and
+            // selection while the new listing lands, so a rename does not blink the
+            // whole panel.
+            store.refreshFromDisk()
         } catch {
             FileExplorerNamePrompt.presentFailure(error, window: hostWindow)
         }

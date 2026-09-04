@@ -187,6 +187,58 @@ struct FileExplorerStoreTests {
     }
 
     @Test
+    func testRefreshFromDiskKeepsTheTreeOnScreenInsteadOfEmptyingIt() async throws {
+        // `reload()` blanks `rootNodes` and refills them asynchronously. The directory
+        // watcher runs it on every write under the root, so the panel blinked constantly
+        // while anything touched files. A refresh must leave the rows in place.
+        let provider = MockFileExplorerProvider()
+        provider.listings["/home/user/project"] = .success([
+            FileExplorerEntry(name: "src", path: "/home/user/project/src", isDirectory: true),
+            FileExplorerEntry(name: "README.md", path: "/home/user/project/README.md", isDirectory: false),
+        ])
+
+        let store = FileExplorerStore()
+        store.setProviderForTesting(provider)
+        store.setRootPath("/home/user/project")
+        try await waitFor("root nodes loaded") { store.rootNodes.count == 2 }
+
+        store.refreshFromDisk()
+        #expect(store.rootNodes.count == 2, "the refresh must not empty the tree, even for a frame")
+
+        store.reload()
+        #expect(store.rootNodes.isEmpty, "reload() still tears down — that is what refreshFromDisk avoids")
+    }
+
+    @Test
+    func testRefreshFromDiskReusesNodesForUnchangedPaths() async throws {
+        // Row identity is what lets the outline view keep expansion and selection across
+        // a refresh. Fresh objects per listing force a full reloadData, which is the blink.
+        let provider = MockFileExplorerProvider()
+        provider.listings["/home/user/project"] = .success([
+            FileExplorerEntry(name: "src", path: "/home/user/project/src", isDirectory: true),
+            FileExplorerEntry(name: "README.md", path: "/home/user/project/README.md", isDirectory: false),
+        ])
+
+        let store = FileExplorerStore()
+        store.setProviderForTesting(provider)
+        store.setRootPath("/home/user/project")
+        try await waitFor("root nodes loaded") { store.rootNodes.count == 2 }
+        let originalSrc = try #require(store.rootNodes.first { $0.name == "src" })
+
+        // A new file appears; everything else is untouched.
+        provider.listings["/home/user/project"] = .success([
+            FileExplorerEntry(name: "src", path: "/home/user/project/src", isDirectory: true),
+            FileExplorerEntry(name: "NEW.md", path: "/home/user/project/NEW.md", isDirectory: false),
+            FileExplorerEntry(name: "README.md", path: "/home/user/project/README.md", isDirectory: false),
+        ])
+        store.refreshFromDisk()
+        try await waitFor("new entry picked up") { store.rootNodes.count == 3 }
+
+        let refreshedSrc = try #require(store.rootNodes.first { $0.name == "src" })
+        #expect(refreshedSrc === originalSrc, "an unchanged path must keep its node object")
+    }
+
+    @Test
     func testDisplayRootPathUsesTilde() {
         let provider = MockFileExplorerProvider(homePath: "/home/user")
         let store = FileExplorerStore()
